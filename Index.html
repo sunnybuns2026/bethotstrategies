@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Therapeutic Strategies Database</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --sand:#FBF7F1;
+  --sand-deep:#F1E9DD;
+  --ink:#2B2A28;
+  --ink-soft:#6B6660;
+  --teal:#1F6F72;
+  --teal-deep:#154F52;
+  --coral:#E97B5B;
+  --coral-soft:#F6C9B8;
+  --sage:#7FA593;
+  --line:#E4DACB;
+  --white:#FFFFFF;
+  --radius:14px;
+  --shadow:0 4px 18px rgba(43,42,40,0.08);
+  /* Goal Planning theme: pink & sage */
+  --pink:#C9739A;
+  --pink-light:#FBEAF1;
+  --pink-text:#7A2F53;
+  --sage-accent:#6E9A82;
+  --sage-light:#E7F0EA;
+  /* Safety & Wellness theme: sky blue & pale yellow */
+  --sky:#4E8FC7;
+  --sky-light:#E8F2FB;
+  --sky-text:#1F4E77;
+  --paleyellow:#F2D879;
+  --paleyellow-light:#FCF6E0;
+  --paleyellow-text:#7A6110;
+}
+html, body{overflow-x:hidden; max-width:100vw;}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Nunito Sans',sans-serif;background:var(--sand);color:var(--ink);}
+h1,h2,h3,.display{font-family:'Fraunces',serif;}
+button{font-family:inherit;cursor:pointer;}
+.hidden{display:none !important;}
+a{color:var(--teal);}
+
+/* ---- App shell: sidebar + main ---- */
+.app-shell{display:flex;min-height:100vh;}
+.sidebar{
+  width:230px;flex-shrink:0;
+  background:var(--teal-deep);
+  color:var(--sand);
+  padding:22px 14px;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.sidebar h1{font-size:1.15rem;margin:0 0 4px;display:flex;align-items:center;gap:8px;color:#fff;}
+.sidebar .tagline{font-size:0.72rem;color:rgba(255,255,255,0.6);margin-bottom:18px;}
+.sync-status{font-size:0.7rem;background:rgba(255,255,255,0.1);padding:5px 10px;border-radius:20px;display:flex;align-items:center;gap:6px;margin-bottom:16px;}
+.sync-status .dot{width:7px;height:7px;border-radius:50%;background:#D96B5A;flex-shrink:0;}
+.sync-status.connected .dot{background:#8FD6A8;}
+.nav-group-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin:16px 8px 6px;font-weight:700;}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  background:none;border:none;color:rgba(255,255,255,0.82);
+  padding:10px 12px;border-radius:10px;font-size:0.87rem;font-weight:600;
+  margin-bottom:2px;transition:background .15s;
+}
+.nav-btn:hover{background:rgba(255,255,255,0.08);}
+.nav-btn.active{background:rgba(255,255,255,0.16);color:#fff;}
+.nav-btn .emoji{font-size:1rem;width:20px;text-align:center;flex-shrink:0;}
+.sidebar-footer{margin-top:20px;display:flex;flex-direction:column;gap:4px;}
+.sidebar-footer .nav-btn{font-size:0.78rem;opacity:0.85;}
+
+.main-area{flex:1;min-width:0;padding:0 0 60px;}
+.topbar{
+  background:var(--white);border-bottom:1px solid var(--line);
+  padding:18px 30px;position:sticky;top:0;z-index:5;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+}
+.topbar h2{margin:0;font-size:1.3rem;color:var(--teal-deep);display:flex;align-items:center;gap:8px;}
+.topbar .sub{font-size:0.8rem;color:var(--ink-soft);margin-top:2px;}
+.panel{max-width:1100px;margin:0 auto;padding:24px 30px 10px;}
+.panel.hidden{display:none;}
+.panel-wide{max-width:1280px;}
+
+.badge{background:var(--coral);color:#2B1B14;border-radius:20px;padding:1px 8px;font-size:0.75rem;font-weight:800;}
+/* ---- Toolbar / buttons (global) ---- */
+.tbtn{
+  background:var(--sand-deep);color:var(--teal-deep);border:1px solid var(--line);
+  padding:8px 13px;border-radius:10px;font-size:0.82rem;font-weight:700;display:flex;align-items:center;gap:6px;
+}
+.tbtn:hover{background:var(--line);}
+.tbtn.primary{background:var(--teal);border-color:var(--teal);color:#fff;}
+.tbtn.primary:hover{background:var(--teal-deep);}
+.tbtn.coral{background:var(--coral);border-color:var(--coral);color:#2B1B14;}
+
+/* ---- Search / filter ---- */
+.search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.search-box{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:9px 14px;}
+.search-box input{border:none;outline:none;background:transparent;width:100%;font-size:0.95rem;font-family:inherit;}
+select.domain-filter{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--white);font-family:inherit;font-size:0.9rem;}
+.clear-btn{background:none;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:0.85rem;color:var(--ink-soft);}
+
+/* ---- Strategy grid ---- */
+.strategy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:16px;}
+.strategy-card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;}
+.strategy-card h3{margin:0;font-size:1.05rem;color:var(--teal-deep);}
+.domain-pills{display:flex;flex-wrap:wrap;gap:6px;}
+.pill{background:var(--sand-deep);color:var(--teal-deep);font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+.strategy-card p{margin:0;font-size:0.88rem;color:var(--ink-soft);line-height:1.45;}
+.strategy-card .notes{font-size:0.8rem;color:var(--sage);font-style:italic;}
+.strategy-card a.res-link{font-size:0.82rem;color:var(--coral);font-weight:700;text-decoration:none;}
+.card-actions{display:flex;gap:8px;margin-top:auto;padding-top:8px;}
+.card-actions button{flex:1;background:var(--sand-deep);border:none;border-radius:8px;padding:7px;font-size:0.8rem;font-weight:700;color:var(--teal-deep);}
+.card-actions button.add-plan{background:var(--teal);color:var(--white);}
+.card-actions button.danger{background:transparent;color:#B5493A;}
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--ink-soft);}
+
+/* ---- Modal ---- */
+.modal-overlay{position:fixed;inset:0;background:rgba(43,42,40,0.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
+.modal{background:var(--white);border-radius:18px;max-width:640px;width:100%;padding:24px 26px 28px;box-shadow:0 20px 60px rgba(0,0,0,0.25);}
+.modal.wide{max-width:820px;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.modal-head h2{margin:0;font-size:1.25rem;color:var(--teal-deep);}
+.modal-close{background:none;border:none;font-size:1.3rem;color:var(--ink-soft);line-height:1;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:0.82rem;font-weight:700;color:var(--ink-soft);margin-bottom:5px;}
+.field input[type=text],.field input[type=date],.field input[type=password],.field textarea,.field select{
+  width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:0.92rem;background:var(--sand);
+}
+.field textarea{min-height:70px;resize:vertical;}
+.field-row{display:flex;gap:12px;flex-wrap:wrap;}
+.field-row .field{flex:1;min-width:160px;}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:0.88rem;margin-bottom:10px;}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+.btn{padding:9px 16px;border-radius:9px;border:1px solid var(--line);background:var(--sand-deep);font-weight:700;font-size:0.88rem;color:var(--teal-deep);}
+.btn.primary{background:var(--teal);color:var(--white);border-color:var(--teal);}
+.btn.coral{background:var(--coral);color:#2B1B14;border-color:var(--coral);}
+.btn.ghost{background:transparent;}
+.subcat-row{display:flex;gap:8px;margin-bottom:8px;}
+.subcat-row input{flex:1;}
+.subcat-row button{background:none;border:none;color:#B5493A;font-size:1.1rem;}
+.domain-chip-picker{display:flex;flex-wrap:wrap;gap:8px;}
+.domain-chip{border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:0.82rem;background:var(--sand);}
+.domain-chip.selected{background:var(--teal);color:var(--white);border-color:var(--teal);}
+.cat-manage-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);}
+.cat-manage-row input{flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;}
+.cat-manage-row button{background:none;border:none;color:#B5493A;font-size:1rem;}
+
+/* Plan list */
+.plan-list{border:1px solid var(--line);border-radius:10px;max-height:220px;overflow-y:auto;}
+.plan-list-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-size:0.85rem;}
+.plan-list-item:last-child{border-bottom:none;}
+.plan-list-item button{background:none;border:none;color:#B5493A;font-size:1rem;}
+.plan-list-empty{padding:16px;text-align:center;color:var(--ink-soft);font-size:0.85rem;}
+
+/* Wellness plan table */
+.wellness-table{width:100%;border-collapse:collapse;margin-bottom:14px;}
+.wellness-table th{font-size:0.75rem;text-align:left;color:var(--sky-text);padding:6px 8px;}
+.wellness-table td{border:1px solid var(--sky);padding:6px;vertical-align:top;background:var(--paleyellow-light);}
+.wellness-table textarea{width:100%;min-height:60px;border:none;background:transparent;font-family:inherit;font-size:0.82rem;resize:vertical;}
+.light-label{font-weight:800;font-size:0.85rem;border-radius:8px;padding:6px;text-align:center;color:#fff;}
+.light-green{background:#4E9A6B;}
+.light-orange{background:#E08A3C;}
+.light-red{background:#C24C40;}
+
+/* Sensory diet slots */
+.slot-card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--sand);}
+.slot-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.slot-head input{font-weight:700;border:none;background:transparent;font-size:0.95rem;font-family:inherit;}
+.slot-head button{background:none;border:none;color:#B5493A;}
+
+.helper-text{font-size:0.78rem;color:var(--ink-soft);margin:4px 0 10px;line-height:1.4;}
+.file-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.import-preview{border:1px solid var(--line);border-radius:10px;max-height:260px;overflow-y:auto;margin:10px 0;}
+.import-preview .row{padding:8px 12px;border-bottom:1px solid var(--line);font-size:0.85rem;display:flex;justify-content:space-between;}
+.import-preview .row:last-child{border-bottom:none;}
+.import-preview .dup{color:var(--coral);font-weight:700;}
+
+/* Goal Planning (pink & sage) panel chrome */
+.gp-shell{border:1px solid var(--pink);border-radius:16px;overflow:hidden;background:var(--white);}
+.gp-head{background:linear-gradient(90deg,var(--pink),var(--sage-accent));color:#fff;padding:16px 22px;}
+.gp-head h3{margin:0;font-size:1.1rem;}
+.gp-body{padding:20px 22px;}
+.gp-body .field label{color:var(--pink-text);}
+.gp-pill{background:var(--sage-light);color:var(--sage-accent);font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+.gp-strategy-picker{border:1px solid var(--pink-light);border-radius:10px;max-height:280px;overflow-y:auto;padding:6px;background:var(--pink-light);}
+.gp-strategy-picker label{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:8px;font-size:0.85rem;}
+.gp-strategy-picker label:hover{background:rgba(255,255,255,0.6);}
+
+/* Safety plan (sky & pale yellow) panel chrome */
+.sw-shell{border:1px solid var(--sky);border-radius:16px;overflow:hidden;background:var(--white);}
+.sw-head{background:linear-gradient(90deg,var(--sky),var(--paleyellow));color:#fff;padding:16px 22px;}
+.sw-head h3{margin:0;font-size:1.1rem;text-shadow:0 1px 3px rgba(0,0,0,0.15);}
+.sw-body{padding:20px 22px;}
+.sw-body .field label{color:var(--sky-text);}
+
+/* Goal bank */
+.gb-item{border:1px solid var(--pink-light);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--white);}
+.gb-item h4{margin:0 0 6px;color:var(--pink-text);font-size:1rem;}
+.gb-item .meta{font-size:0.75rem;color:var(--ink-soft);margin-bottom:8px;}
+.gb-item .practice{background:var(--sage-light);border-radius:8px;padding:8px 10px;font-size:0.85rem;color:var(--sage-accent);margin-top:8px;}
+.gb-actions{display:flex;gap:8px;margin-top:10px;}
+.gb-actions button{background:var(--sand-deep);border:none;border-radius:8px;padding:6px 10px;font-size:0.78rem;font-weight:700;color:var(--teal-deep);}
+.gb-actions button.danger{color:#B5493A;}
+.ai-gen-box{border:2px dashed var(--pink);border-radius:14px;padding:18px;margin-bottom:22px;background:var(--pink-light);}
+.ai-gen-box h4{margin:0 0 10px;color:var(--pink-text);}
+.ai-status{font-size:0.8rem;color:var(--ink-soft);margin-top:8px;min-height:18px;}
+
+@media print{
+  body *{visibility:hidden;}
+  #print-area, #print-area *{visibility:visible;}
+  #print-area{position:absolute;top:0;left:0;width:100%;}
+}
+
+/* ---- Mobile responsive layout ---- */
+.hamburger-btn{display:none;}
+.sidebar-overlay{display:none;}
+@media (max-width:900px){
+  body{overflow-x:hidden;}
+  .app-shell{display:block;}
+  .sidebar{
+    position:fixed; top:0; left:0; height:100vh; z-index:200;
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    box-shadow:4px 0 24px rgba(0,0,0,0.25);
+    width:250px;
+  }
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-overlay{
+    display:block; position:fixed; inset:0; background:rgba(0,0,0,0.4);
+    z-index:150; opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .sidebar-overlay.show{opacity:1; pointer-events:auto;}
+  .main-area{width:100%; min-width:0;}
+  .hamburger-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:38px; height:38px; border:1px solid var(--line); border-radius:9px;
+    background:var(--sand-deep); font-size:1.1rem; flex-shrink:0;
+  }
+  .topbar{padding:14px 16px; gap:10px;}
+  .topbar h2{font-size:1.05rem;}
+  .panel{padding:16px 14px 10px;}
+  .field-row{flex-direction:column;}
+  .search-row{flex-direction:column; align-items:stretch;}
+  .search-row > *{width:100%;}
+  .gp-body, .sw-body{padding:16px 14px;}
+  .result-top, .dv-result-top{flex-direction:column; align-items:flex-start;}
+  #panel-driving{margin:-16px -14px;}
+  #panel-driving .dv-wrap{padding:0 16px 60px;}
+  .ev-layout{grid-template-columns:1fr !important;}
+  table.ev-table, .wellness-table{display:block; overflow-x:auto; white-space:nowrap;}
+  .modal{max-width:94vw; padding:20px 16px 22px;}
+
+  /* Defensive: nothing inside any panel may exceed the viewport width */
+  .panel, .panel *{max-width:100%;}
+  .gp-shell, .sw-shell, .ai-gen-box, .gb-item, .strategy-card, .domain-chip-picker,
+  .gp-strategy-picker, #panel-driving, #panel-driving *, #panel-evidence, .ndis-box,
+  .import-preview, .cat-manage-row, .plan-list, .strategy-grid{max-width:100%; box-sizing:border-box;}
+  .strategy-grid{grid-template-columns:1fr;}
+  .domain-chip-picker, .options, .dv-options{flex-wrap:wrap;}
+  .dv-options{grid-template-columns:1fr !important;}
+  input, textarea, select, button{max-width:100%;}
+}
+</style>
+</head>
+<style>
+/* ---- Driving Domain panel (scoped) ---- */
+#panel-driving{
+  --dv-paper:#F4F5F1; --dv-ink:#1B2A33; --dv-ink-soft:#4A5A63; --dv-line:#C7CEC6;
+  --dv-steel:#2E5266; --dv-steel-deep:#1D3A4B; --dv-green:#3F7D5C; --dv-green-bg:#E4EEE7;
+  --dv-amber:#B4791F; --dv-amber-bg:#F6EBD9; --dv-red:#A93A34; --dv-red-bg:#F5E3E1;
+  background:var(--dv-paper);color:var(--dv-ink);font-family:'IBM Plex Sans',sans-serif;
+  margin:-24px -30px;padding:0;
+}
+#panel-driving .dv-wrap{max-width:940px;margin:0 auto;padding:0 24px 80px;}
+#panel-driving header.dv-mast{border-bottom:2px solid var(--dv-ink);padding:36px 0 20px;margin-bottom:8px;}
+#panel-driving .dv-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dv-steel);margin-bottom:16px;}
+#panel-driving h1.dv-title{font-family:'Source Serif 4',serif;font-weight:700;font-size:clamp(26px,4vw,40px);line-height:1.1;margin:0 0 10px;}
+#panel-driving .dv-subhead{font-size:15.5px;color:var(--dv-ink-soft);max-width:64ch;line-height:1.5;margin:0;}
+#panel-driving .dv-disclaimer{background:var(--dv-amber-bg);border-left:4px solid var(--dv-amber);padding:16px 20px;margin:26px 0 34px;font-size:13.5px;line-height:1.55;color:#5C3E11;}
+#panel-driving .dv-section-label{display:flex;align-items:baseline;gap:12px;margin:48px 0 6px;}
+#panel-driving .dv-section-label .num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dv-steel);border:1px solid var(--dv-steel);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#panel-driving .dv-section-label h2{font-family:'Source Serif 4',serif;font-size:20px;margin:0;font-weight:600;}
+#panel-driving .dv-section-intro{color:var(--dv-ink-soft);font-size:14px;line-height:1.6;max-width:66ch;margin:0 0 22px;}
+#panel-driving .dv-domain{border:1px solid var(--dv-line);background:#fff;border-radius:3px;padding:18px 20px;margin-bottom:14px;}
+#panel-driving .dv-domain-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:4px;}
+#panel-driving .dv-domain-head h3{font-size:15px;margin:0;font-weight:600;}
+#panel-driving .dv-weight-tag{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dv-steel-deep);background:var(--dv-paper);border:1px solid var(--dv-line);padding:2px 7px;border-radius:20px;white-space:nowrap;}
+#panel-driving .dv-evidence{font-size:12px;color:var(--dv-ink-soft);line-height:1.5;margin:2px 0 12px;}
+#panel-driving .dv-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+@media (max-width:700px){#panel-driving .dv-options{grid-template-columns:1fr;}}
+#panel-driving .dv-opt{position:relative;}
+#panel-driving .dv-opt input{position:absolute;opacity:0;inset:0;cursor:pointer;}
+#panel-driving .dv-opt label{display:block;border:1px solid var(--dv-line);border-radius:3px;padding:9px 11px;font-size:13px;line-height:1.4;cursor:pointer;}
+#panel-driving .dv-opt input:checked + label{border-color:var(--dv-steel);background:#EEF3F5;box-shadow:inset 0 0 0 1px var(--dv-steel);font-weight:600;}
+#panel-driving .dv-calc-row{display:flex;justify-content:center;margin:40px 0 8px;}
+#panel-driving button.dv-calc{font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;background:var(--dv-ink);color:var(--dv-paper);border:none;padding:14px 30px;border-radius:3px;}
+#panel-driving .dv-hint{text-align:center;font-size:12px;color:var(--dv-ink-soft);}
+#panel-driving .dv-result{display:none;margin-top:44px;border:2px solid var(--dv-ink);border-radius:3px;overflow:hidden;}
+#panel-driving .dv-result.show{display:block;}
+#panel-driving .dv-result-top{padding:26px 24px 10px;display:flex;gap:28px;align-items:center;flex-wrap:wrap;}
+#panel-driving .dv-band-label{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;}
+#panel-driving .dv-band-title{font-family:'Source Serif 4',serif;font-size:24px;font-weight:700;margin:0 0 8px;}
+#panel-driving .dv-band-desc{font-size:13.5px;line-height:1.6;color:var(--dv-ink-soft);margin:0;}
+#panel-driving .dv-flags{padding:0 24px 24px;}
+#panel-driving .dv-flags h4{font-size:11.5px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dv-ink-soft);margin:16px 0 8px;font-weight:600;}
+#panel-driving .dv-flag-item{font-size:13px;padding:7px 0;border-top:1px solid var(--dv-paper);display:flex;justify-content:space-between;gap:12px;}
+#panel-driving .dv-flag-item .dom{color:var(--dv-ink);}
+#panel-driving .dv-flag-item .lvl{font-family:'IBM Plex Mono',monospace;font-size:11.5px;white-space:nowrap;}
+#panel-driving .dv-gauge-box{flex-shrink:0;}
+#panel-driving .dv-rf-note{background:#EEF3F5;border-left:4px solid var(--dv-steel);padding:13px 16px;font-size:13px;line-height:1.6;color:var(--dv-steel-deep);margin-bottom:24px;}
+#panel-driving .dv-rf-group{margin-bottom:26px;}
+#panel-driving .dv-rf-group-title{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dv-steel);border-bottom:1px solid var(--dv-line);padding-bottom:7px;margin-bottom:9px;}
+#panel-driving details.dv-rf-card{border:1px solid var(--dv-line);background:#fff;border-radius:3px;margin-bottom:8px;}
+#panel-driving details.dv-rf-card summary{list-style:none;cursor:pointer;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:600;font-size:13.5px;}
+#panel-driving details.dv-rf-card summary::-webkit-details-marker{display:none;}
+#panel-driving details.dv-rf-card summary .region{font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:10.5px;color:var(--dv-steel);white-space:nowrap;}
+#panel-driving details.dv-rf-card summary::after{content:"+";font-family:'IBM Plex Mono',monospace;color:var(--dv-steel);font-size:15px;flex-shrink:0;}
+#panel-driving details.dv-rf-card[open] summary::after{content:"–";}
+#panel-driving .dv-rf-body{padding:0 16px 14px;border-top:1px solid var(--dv-paper);}
+#panel-driving .dv-rf-body ul{margin:10px 0 0;padding-left:18px;}
+#panel-driving .dv-rf-body li{font-size:12.5px;line-height:1.55;color:var(--dv-ink-soft);margin-bottom:6px;}
+#panel-driving .dv-rf-body .dv-rf-link{display:inline-block;margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dv-steel);text-decoration:none;border-bottom:1px dotted var(--dv-steel);}
+#panel-driving .dv-refs{margin-top:56px;border-top:1px solid var(--dv-line);padding-top:26px;}
+#panel-driving .dv-refs ol{padding-left:20px;margin:0;}
+#panel-driving .dv-refs li{font-size:12.3px;line-height:1.6;color:var(--dv-ink-soft);margin-bottom:10px;}
+#panel-driving .dv-refs a{color:var(--dv-steel);text-decoration:none;border-bottom:1px dotted var(--dv-steel);}
+#panel-driving .dv-report-tpl{border:1px solid var(--dv-line);border-radius:4px;background:#fff;padding:16px 18px;margin-bottom:14px;}
+#panel-driving .dv-report-tpl h4{margin:0 0 8px;font-size:14.5px;font-family:'Source Serif 4',serif;}
+#panel-driving .dv-report-tpl textarea{width:100%;min-height:120px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6;border:1px solid var(--dv-line);border-radius:4px;padding:10px;background:var(--dv-paper);color:var(--dv-ink);resize:vertical;}
+#panel-driving .dv-copy-btn{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--dv-steel-deep);color:#fff;border:none;padding:7px 12px;border-radius:3px;cursor:pointer;}
+
+/* ---- Evidence Base panel ---- */
+#panel-evidence .ev-layout{display:grid;grid-template-columns:1.15fr 0.85fr;gap:20px;align-items:start;}
+@media (max-width:900px){#panel-evidence .ev-layout{grid-template-columns:1fr;}}
+#panel-evidence .ev-table-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;}
+#panel-evidence table.ev-table{width:100%;border-collapse:collapse;}
+#panel-evidence table.ev-table th{background:var(--sand-deep);color:var(--teal-deep);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;padding:8px 10px;text-align:left;}
+#panel-evidence table.ev-table td{border-top:1px solid var(--line);padding:9px 10px;font-size:0.83rem;vertical-align:top;}
+#panel-evidence table.ev-table tr.selected{background:var(--sand-deep);}
+#panel-evidence table.ev-table tr{cursor:pointer;}
+#panel-evidence .ev-detail{border:1px solid var(--teal);border-radius:12px;background:#fff;padding:18px 20px;position:sticky;top:90px;}
+#panel-evidence .ev-detail h4{margin:0 0 4px;color:var(--teal-deep);}
+#panel-evidence .ev-detail .meta{font-size:0.78rem;color:var(--ink-soft);margin-bottom:12px;}
+#panel-evidence .ev-summary-box{background:var(--sand-deep);border-radius:10px;padding:12px 14px;font-size:0.85rem;line-height:1.55;margin-top:10px;min-height:40px;}
+#panel-evidence .ev-empty{color:var(--ink-soft);font-size:0.85rem;text-align:center;padding:30px 10px;}
+#panel-evidence .ndis-box{background:var(--sand-deep);border-left:4px solid var(--teal);border-radius:8px;padding:16px 20px;margin-top:30px;font-size:0.87rem;line-height:1.6;}
+#panel-evidence .ndis-box h4{margin:0 0 8px;color:var(--teal-deep);}
+#panel-evidence .ndis-box ol{margin:8px 0 0;padding-left:20px;}
+#panel-evidence .ndis-box li{margin-bottom:8px;}
+</style>
+<body>
+<div class="app-shell">
+  <nav class="sidebar">
+    <h1>🌈 Therapeutic Strategies</h1>
+    <div class="tagline">Clinical planning &amp; resource toolkit</div>
+    <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncStatusText">Cloud sync not connected</span></div>
+
+    <div class="nav-group-label">Toolkit</div>
+    <button class="nav-btn active" data-panel="strategies"><span class="emoji">📚</span> Strategy Database</button>
+    <button class="nav-btn" data-panel="goalplanning"><span class="emoji">🎯</span> Goal Planning</button>
+    <button class="nav-btn" data-panel="safety"><span class="emoji">🚦</span> Safety &amp; Wellness Plan</button>
+    <button class="nav-btn" data-panel="goalbank"><span class="emoji">🏦</span> Goal Bank</button>
+    <button class="nav-btn" data-panel="sensory"><span class="emoji">🌀</span> Sensory Diet</button>
+
+    <div class="nav-group-label">Domains</div>
+    <button class="nav-btn" data-panel="driving"><span class="emoji">🚗</span> Driving Domain</button>
+    <button class="nav-btn" data-panel="evidence"><span class="emoji">📖</span> Evidence Base</button>
+
+    <div class="nav-group-label">Data</div>
+    <div class="sidebar-footer">
+      <button class="nav-btn" id="btnCloudSync"><span class="emoji">☁️</span> Cloud Sync</button>
+      <button class="nav-btn" id="btnBackup"><span class="emoji">💾</span> Backup</button>
+      <button class="nav-btn" id="btnBulkImport"><span class="emoji">📥</span> Bulk Import</button>
+      <button class="nav-btn" id="btnAiSettings"><span class="emoji">⚙️</span> AI Settings</button>
+    </div>
+  </nav>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-area">
+    <div class="topbar">
+      <button class="hamburger-btn" id="hamburgerBtn" type="button" aria-label="Open menu">☰</button>
+      <div>
+        <h2 id="topbarTitle">📚 Strategy Database</h2>
+        <div class="sub" id="topbarSub">Search, filter, and manage your intervention strategies.</div>
+      </div>
+    </div>
+
+    <!-- ================= PANEL: STRATEGY DATABASE ================= -->
+    <div class="panel" id="panel-strategies">
+      <div class="search-row">
+        <div class="search-box">🔍 <input type="text" id="searchInput" placeholder="Search strategies…"></div>
+        <select class="domain-filter" id="domainFilter"><option value="">All Categories</option></select>
+        <button class="clear-btn" id="btnClearFilters">✕ Clear</button>
+        <button class="tbtn primary" id="btnAddStrategy">✨ Add Strategy</button>
+        <button class="tbtn" id="btnManageCategories">🏷️ Manage Categories</button>
+      </div>
+      <div class="strategy-grid" id="strategyGrid"></div>
+    </div>
+
+    <!-- ================= PANEL: GOAL PLANNING (Treatment Plan) ================= -->
+    <div class="panel hidden" id="panel-goalplanning">
+      <div class="gp-shell">
+        <div class="gp-head"><h3>🎯 Goal Planning</h3></div>
+        <div class="gp-body">
+          <div class="field-row">
+            <div class="field"><label>Client Name (optional)</label><input type="text" id="tp-client"></div>
+            <div class="field"><label>Date</label><input type="date" id="tp-date"></div>
+          </div>
+          <div class="field">
+            <label>Diagnosis / Presenting Conditions</label>
+            <textarea id="tp-diagnosis" placeholder="e.g. Autism Spectrum Disorder, sensory processing difficulties, generalised anxiety…"></textarea>
+          </div>
+          <div class="field"><label>Session / Overarching Goal</label><textarea id="tp-goal"></textarea></div>
+          <div class="field">
+            <label>Therapist Details &amp; Disclaimer</label>
+            <div class="checkbox-row"><input type="checkbox" id="tp-includeTherapist"> Include therapist name &amp; AHPRA number</div>
+            <div id="tp-therapistFields" class="hidden field-row">
+              <div class="field"><label>Therapist Name</label><input type="text" id="tp-therapistName"></div>
+              <div class="field"><label>AHPRA Number</label><input type="text" id="tp-ahpra"></div>
+            </div>
+            <div class="checkbox-row"><input type="checkbox" id="tp-includeDisclaimer" checked> Include client disclaimer line</div>
+            <div id="tp-disclaimerField" class="field">
+              <textarea id="tp-disclaimerText">This treatment plan has been prepared for the individual named above and is intended for use under the guidance of a qualified clinician. It is not a substitute for professional assessment.</textarea>
+            </div>
+          </div>
+          <div class="field">
+            <label>Pick Strategies <span class="gp-pill">from Strategy Database</span></label>
+            <div class="gp-strategy-picker" id="gp-strategyPicker"></div>
+          </div>
+          <div class="field">
+            <label>Strategies in Plan</label>
+            <div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><button class="btn ghost" id="tp-clearAll" type="button">✕ Clear All</button></div>
+            <div class="plan-list" id="tp-planList"></div>
+          </div>
+          <div class="modal-actions">
+            <label class="btn" style="display:inline-block;">📂 Reimport HTML<input type="file" id="tp-reimport" accept=".html" style="display:none;"></label>
+            <button class="btn" id="tp-exportTxt" type="button">Export .txt</button>
+            <button class="btn" id="tp-exportHtml" type="button">Export .html</button>
+            <button class="btn coral" id="tp-exportPdf" type="button">Export .pdf</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= PANEL: SAFETY & WELLNESS PLAN ================= -->
+    <div class="panel hidden" id="panel-safety">
+      <div class="sw-shell">
+        <div class="sw-head"><h3>🚦 Safety &amp; Wellness Plan</h3></div>
+        <div class="sw-body">
+          <div class="field-row">
+            <div class="field"><label>Client Name (optional)</label><input type="text" id="wp-client"></div>
+            <div class="field"><label>Date</label><input type="date" id="wp-date"></div>
+          </div>
+          <table class="wellness-table" id="wp-table"><thead><tr><th></th><th>What it looks / feels like</th><th>What helps</th><th>What doesn't help</th></tr></thead><tbody></tbody></table>
+          <div class="modal-actions">
+            <label class="btn" style="display:inline-block;">📂 Reimport HTML<input type="file" id="wp-reimport" accept=".html" style="display:none;"></label>
+            <button class="btn" id="wp-exportTxt" type="button">Export .txt</button>
+            <button class="btn" id="wp-exportHtml" type="button">Export .html</button>
+            <button class="btn coral" id="wp-exportPdf" type="button">Export .pdf</button>
+            <button class="btn primary" id="wp-exportWithPlan" type="button">Export with Treatment Plan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= PANEL: GOAL BANK ================= -->
+    <div class="panel hidden" id="panel-goalbank">
+      <div class="ai-gen-box">
+        <h4>🤖 AI Goal Generator</h4>
+        <div class="field-row">
+          <div class="field"><label>Diagnosis / Presenting Condition</label><input type="text" id="gb-ai-diagnosis" placeholder="e.g. Cerebral palsy, fine motor delay"></div>
+          <div class="field"><label>Domain / Focus Area</label><input type="text" id="gb-ai-domain" placeholder="e.g. Fine motor skills, self-regulation"></div>
+        </div>
+        <div class="field"><label>Additional context (optional)</label><input type="text" id="gb-ai-context" placeholder="e.g. 6-year-old, mainstream classroom, NDIS funded"></div>
+        <button class="btn primary" id="gb-ai-generate" type="button">✨ Generate SMART Goal + Home Practice</button>
+        <div class="ai-status" id="gb-ai-status"></div>
+      </div>
+      <div class="field"><label>Goal Bank</label></div>
+      <div id="gb-list"></div>
+      <button class="tbtn" id="gb-addManual" type="button">+ Add Goal Manually</button>
+      <div class="modal-actions" style="margin-top:20px;">
+        <button class="btn" id="gb-exportTxt" type="button">Export .txt</button>
+        <button class="btn" id="gb-exportHtml" type="button">Export .html</button>
+        <button class="btn coral" id="gb-exportPdf" type="button">Export .pdf</button>
+        <button class="btn primary" id="gb-exportWithPlan" type="button">Export with Treatment Plan</button>
+      </div>
+    </div>
+
+    <!-- ================= PANEL: SENSORY DIET ================= -->
+    <div class="panel hidden" id="panel-sensory">
+      <div class="field-row">
+        <div class="field"><label>Client Name (optional)</label><input type="text" id="sd-client"></div>
+        <div class="field"><label>Date</label><input type="date" id="sd-date"></div>
+      </div>
+      <div class="field"><label>Therapist notes / overview (optional)</label><textarea id="sd-overview"></textarea></div>
+      <div class="field"><label>Time Slots</label><div id="sd-slots"></div><button class="btn" id="sd-addSlot" type="button">+ Add Custom Time Slot</button></div>
+      <div class="modal-actions">
+        <button class="btn" id="sd-exportHtml" type="button">Export .html</button>
+        <button class="btn coral" id="sd-exportPdf" type="button">Export .pdf</button>
+      </div>
+    </div>
+
+    <!-- ================= PANEL: DRIVING DOMAIN ================= -->
+    <div class="panel hidden panel-wide" id="panel-driving">
+<div class="dv-wrap">
+
+  <header class="dv-mast">
+    <div class="dv-eyebrow">
+      <span>Occupational Therapy · Driver Assessment</span>
+      <span id="dateStamp"></span>
+    </div>
+    <h1 class="dv-title">Fitness-to-Drive Screening Matrix</h1>
+    <p class="dv-subhead">A structured, evidence-informed off-road screen that estimates the likelihood a client will pass an on-road occupational therapy driving assessment — built from published predictive-validity data, not intuition.</p>
+  </header>
+
+  <div class="dv-disclaimer">
+    <strong>This is a decision-support aid, not a substitute for clinical judgement or a licensing decision.</strong>
+    No off-road battery has been shown to fully replace an on-road assessment. Published tools such as DriveSafe/DriveAware
+    only classify roughly half of clients confidently as "likely safe" or "likely unsafe" off-road; the remainder still
+    require full on-road testing. Use this matrix to structure your reasoning and triage referrals — always integrate it
+    with clinical interview, medical/functional history, collateral report, and (where indicated) an on-road evaluation
+    before any recommendation about driving cessation, restriction, or continuation.
+  </div>
+
+  <div class="dv-section-label"><span class="num">1</span><h2>Score the domains</h2></div>
+  <p class="dv-section-intro">Six domains, weighted by the strength of their published predictive validity for on-road pass/fail outcomes. Select the option that best reflects the client's off-road performance in each.</p>
+
+  <form id="matrixForm">
+
+    <div class="dv-domain" data-weight="1" data-domain="Cognitive screen">
+      <div class="dv-domain-head"><h3>Cognitive screen (MoCA / MMSE)</h3><span class="dv-weight-tag">weight ×1.0</span></div>
+      <p class="dv-evidence">MMSE score was one of four subtests retained in the OT‑DORA classification tree predicting on-road fitness-to-drive after stroke (Unsworth et al., AUC 0.83).</p>
+      <div class="dv-options">
+        <div class="dv-opt"><input type="radio" name="cog" value="0" id="cog0"><label for="cog0">Intact<br><span style="color:var(--ink-soft)">MoCA ≥26 / MMSE ≥27</span></label></div>
+        <div class="dv-opt"><input type="radio" name="cog" value="1" id="cog1"><label for="cog1">Mild impairment</label></div>
+        <div class="dv-opt"><input type="radio" name="cog" value="2" id="cog2"><label for="cog2">Significant impairment<br><span style="color:var(--ink-soft)">MMSE &lt;24</span></label></div>
+      </div>
+    </div>
+
+    <div class="dv-domain" data-weight="1.5" data-domain="Trail Making Test B">
+      <div class="dv-domain-head"><h3>Trail Making Test — Part B</h3><span class="dv-weight-tag">weight ×1.5</span></div>
+      <p class="dv-evidence">The "3-or-3 rule" (≥3 min or ≥3 errors) has the most consistent support across 47 reviewed studies; a stricter ≥3.58 min cutoff in cognitively-impaired clients referred for full evaluation showed 74% sensitivity / 62% specificity (Krasniuk et al., 2023).</p>
+      <div class="dv-options">
+        <div class="dv-opt"><input type="radio" name="tmt" value="0" id="tmt0"><label for="tmt0">Pass<br><span style="color:var(--ink-soft)">&lt;3 min, &lt;3 errors</span></label></div>
+        <div class="dv-opt"><input type="radio" name="tmt" value="1" id="tmt1"><label for="tmt1">Borderline<br><span style="color:var(--ink-soft)">3–3.5 min or 3 errors</span></label></div>
+        <div class="dv-opt"><input type="radio" name="tmt" value="2" id="tmt2"><label for="tmt2">Fail<br><span style="color:var(--ink-soft)">≥3.58 min or ≥4 errors</span></label></div>
+      </div>
+    </div>
+
+    <div class="dv-domain" data-weight="1.5" data-domain="Useful Field of View">
+      <div class="dv-domain-head"><h3>Useful Field of View (subtest 2/3)</h3><span class="dv-weight-tag">weight ×1.5</span></div>
+      <p class="dv-evidence">UFOV subtest 3 (selective attention) outperformed Trails B in a comprehensive-evaluation sample: AUC 0.76 vs 0.70, with a ≥467ms cutoff giving 79% sensitivity / 74% specificity for on-road pass/fail (Krasniuk et al., 2023).</p>
+      <div class="dv-options">
+        <div class="dv-opt"><input type="radio" name="ufov" value="0" id="ufov0"><label for="ufov0">Pass<br><span style="color:var(--ink-soft)">Subtest 3 &lt;467ms</span></label></div>
+        <div class="dv-opt"><input type="radio" name="ufov" value="1" id="ufov1"><label for="ufov1">Borderline</label></div>
+        <div class="dv-opt"><input type="radio" name="ufov" value="2" id="ufov2"><label for="ufov2">Fail<br><span style="color:var(--ink-soft)">Subtest 3 ≥467ms</span></label></div>
+      </div>
+    </div>
+
+    <div class="dv-domain" data-weight="3" data-domain="DriveSafe / DriveAware">
+      <div class="dv-domain-head"><h3>DriveSafe / DriveAware</h3><span class="dv-weight-tag">weight ×3.0 — strongest predictor</span></div>
+      <p class="dv-evidence">Highest predictive validity of any office-based tool reviewed: trichotomised classification correctly identifies ~90%+ of the ~50% of clients it confidently sorts as "safe" or "unsafe" (Kay, Bundy & Cheal, 2009; Vito et al. systematic review, 2023). The remaining clients require full on-road testing regardless of score.</p>
+      <div class="dv-options">
+        <div class="dv-opt"><input type="radio" name="dsda" value="0" id="dsda0"><label for="dsda0">Safe classification</label></div>
+        <div class="dv-opt"><input type="radio" name="dsda" value="1" id="dsda1"><label for="dsda1">Requires further testing</label></div>
+        <div class="dv-opt"><input type="radio" name="dsda" value="2" id="dsda2"><label for="dsda2">Unsafe classification</label></div>
+      </div>
+    </div>
+
+    <div class="dv-domain" data-weight="2" data-domain="Self-awareness / insight">
+      <div class="dv-domain-head"><h3>Self-awareness of driving ability</h3><span class="dv-weight-tag">weight ×2.0</span></div>
+      <p class="dv-evidence">Awareness of one's own driving performance is the construct DriveAware was built to isolate, and reduced insight (anosognosia) is repeatedly flagged in the OT fitness-to-drive literature as a marker of elevated on-road risk independent of raw skill scores.</p>
+      <div class="dv-options">
+        <div class="dv-opt"><input type="radio" name="aware" value="0" id="aware0"><label for="aware0">Intact insight</label></div>
+        <div class="dv-opt"><input type="radio" name="aware" value="1" id="aware1"><label for="aware1">Partial insight</label></div>
+        <div class="dv-opt"><input type="radio" name="aware" value="2" id="aware2"><label for="aware2">Absent insight<br><span style="color:var(--ink-soft)">Anosognosic</span></label></div>
+      </div>
+    </div>
+
+    <div class="dv-domain" data-weight="1" data-domain="Physical / functional screen">
+      <div class="dv-domain-head"><h3>Physical / functional screen</h3><span class="dv-weight-tag">weight ×1.0</span></div>
+      <p class="dv-evidence">One physical subtest (e.g. Right Heel Pivot Test, rapid pace walk, cervical/trunk ROM) was retained alongside the three cognitive subtests in the validated OT‑DORA prediction tree (Unsworth et al., 2018).</p>
+      <div class="dv-options">
+        <div class="dv-opt"><input type="radio" name="phys" value="0" id="phys0"><label for="phys0">Within functional limits</label></div>
+        <div class="dv-opt"><input type="radio" name="phys" value="1" id="phys1"><label for="phys1">Mild limitation</label></div>
+        <div class="dv-opt"><input type="radio" name="phys" value="2" id="phys2"><label for="phys2">Significant limitation</label></div>
+      </div>
+    </div>
+
+  </form>
+
+  <div class="dv-calc-row"><button class="dv-calc" onclick="dvCalculate()" type="button">Calculate risk band</button></div>
+  <p class="dv-hint">Score every domain for the most accurate output — unscored domains are treated as missing, not zero.</p>
+
+  <div class="dv-result" id="result">
+    <div class="dv-result-top">
+      <div class="dv-gauge-box"><svg id="gauge" width="180" height="110" viewBox="0 0 180 110"></svg></div>
+      <div class="dv-result-copy">
+        <div class="dv-band-label" id="bandLabel"></div>
+        <p class="dv-band-title" id="bandTitle"></p>
+        <p class="dv-band-desc" id="bandDesc"></p>
+      </div>
+    </div>
+    <div class="dv-flags" id="flags"></div>
+  </div>
+
+  <div class="dv-section-label" style="margin-top:56px;"><span class="num">2</span><h2>Diagnosis-specific red flags</h2></div>
+  <p class="dv-section-intro">The matrix above screens function, not diagnosis — but knowing which brain region or system a condition affects tells you what to watch for during the off-road session and what the on-road assessor should specifically probe. Grouped below by aetiology, each entry names the region/mechanism, the red flags to watch for, and links to the relevant Austroads standard.</p>
+
+  <div class="dv-rf-note">
+    All diagnosis-specific medical standards for Australian and New Zealand licensing are set out in Austroads' <a href="https://austroads.gov.au/drivers-and-vehicles/assessing-fitness-to-drive" target="_blank">Assessing Fitness to Drive</a> (AFTD). Functional red flags below support your off-road reasoning; the licensing standard itself is the authority on reporting obligations and conditional-licence criteria.
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Cerebrovascular</div>
+
+    <details class="dv-rf-card">
+      <summary>Stroke — right hemisphere / parietal <span class="region">hemispatial neglect</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Left-sided neglect present in up to ~80% of acute right-hemisphere strokes — watch for missed hazards, pedestrians, or signage on the left</li>
+        <li>Collisions with left-side obstacles (door frames, kerbs, parked cars) during mobility or transfers</li>
+        <li>Under-scanning to the left at intersections and during lane changes</li>
+        <li>Reduced awareness or denial of the deficit (anosognosia) — self-report of safety is unreliable</li>
+        <li>Screen with cancellation/line bisection tasks; a clear screen does not rule out neglect that only appears in a cluttered, dynamic scene like traffic</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Stroke — frontal lobe <span class="region">executive / behavioural</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Impulsivity and disinhibition — risky overtaking, reduced gap judgement</li>
+        <li>Poor hazard anticipation and slowed decision-making at intersections</li>
+        <li>Perseveration — continuing an action (accelerating, a turn sequence) past the point it's appropriate</li>
+        <li>Reduced self-monitoring and insight, often with intact basic motor and visual skills, so bedside exam alone can look reassuring</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Stroke — left hemisphere / language-dominant <span class="region">aphasia, apraxia</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Comprehension deficits affecting understanding of road signs or verbal/written test instructions — clarify true cognitive status isn't obscured by a language barrier</li>
+        <li>Apraxia disrupting sequenced motor actions such as indicating, checking mirrors, and changing gear in order</li>
+        <li>Right-sided weakness or sensory loss affecting steering and pedal control</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Stroke — posterior / occipital (PCA territory) <span class="region">visual field loss</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Homonymous hemianopia — missed hazards in the blind hemifield, especially peripheral</li>
+        <li>Some clients compensate well with head/eye scanning; others show little awareness of the field loss</li>
+        <li>Confirm with formal visual field testing rather than confrontation testing alone before assuming adequate compensation</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/vision-and-eye-disorders" target="_blank">Austroads: vision and eye disorders →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Traumatic</div>
+
+    <details class="dv-rf-card">
+      <summary>Traumatic brain injury <span class="region">diffuse / frontotemporal-predominant</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Presentation varies widely with injury pattern and severity — avoid assuming a uniform profile</li>
+        <li>Common: slowed processing speed, impaired divided attention, impulsivity</li>
+        <li>Fatigue-related decline over the course of a single drive or assessment — a good start can mask late deterioration</li>
+        <li>Overconfidence relative to actual ability is common and can be more dangerous than the underlying deficit itself</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Neurodegenerative</div>
+
+    <details class="dv-rf-card">
+      <summary>Alzheimer's disease <span class="region">medial temporal / temporoparietal</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Short-term memory loss — getting lost on previously familiar routes</li>
+        <li>Difficulty adapting to novel or complex traffic situations more than routine ones</li>
+        <li>Insight is often relatively preserved early, then declines — reassessment interval matters more than a single screen</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/dementia" target="_blank">Austroads: dementia →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Vascular dementia <span class="region">diffuse subcortical / patchy</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Stepwise rather than smooth decline — function can drop sharply after a new vascular event</li>
+        <li>Prominent slowed processing speed and executive dysfunction relative to memory</li>
+        <li>Presentation depends heavily on lesion location, so functional testing matters more than the diagnosis label alone</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/dementia" target="_blank">Austroads: dementia →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Frontotemporal dementia <span class="region">frontal / temporal</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Early personality change, impulsivity, and disinhibition — often before memory is noticeably affected</li>
+        <li>Reduced insight typically precedes obvious cognitive decline — self- and family-report may both underestimate risk</li>
+        <li>Flag as elevated risk for continued unsafe driving despite the client's subjective confidence</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/dementia" target="_blank">Austroads: dementia →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Dementia with Lewy bodies <span class="region">occipital / subcortical, fluctuating</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Prominent visuospatial impairment and visual hallucinations</li>
+        <li>Fluctuating cognition and alertness — a single good screening session may not represent typical function</li>
+        <li>Parkinsonian motor signs (see Parkinson's disease below) frequently co-occur</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/dementia" target="_blank">Austroads: dementia →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Mild cognitive impairment <span class="region">variable, often amnestic</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Many clients continue to drive safely — MCI alone is not a reason to stop, but does warrant monitoring</li>
+        <li>Amnestic MCI carries an elevated risk of progression, so build in a shorter re-assessment interval</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/dementia" target="_blank">Austroads: dementia →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Movement disorders</div>
+
+    <details class="dv-rf-card">
+      <summary>Parkinson's disease <span class="region">basal ganglia</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Bradykinesia and slowed reaction time, particularly for emergency braking</li>
+        <li>Rigidity and tremor affecting fine steering and pedal control</li>
+        <li>Visuospatial deficits independent of motor symptoms</li>
+        <li>Motor fluctuations ("on/off" periods) — time the assessment to reflect a typical, not best-case, medication state</li>
+        <li>Excessive daytime sleepiness or sudden-onset sleep episodes from dopaminergic medication</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Huntington's disease <span class="region">basal ganglia / striatal, progressive</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Chorea (involuntary movement) directly interfering with steering and pedal control</li>
+        <li>Executive dysfunction and impulsivity</li>
+        <li>Progressive psychiatric symptoms can compound risk beyond the motor presentation</li>
+        <li>Progressive condition — plan for shortening re-assessment intervals over time rather than a one-off clearance</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Neurodevelopmental &amp; congenital</div>
+
+    <details class="dv-rf-card">
+      <summary>Down syndrome <span class="region">global / diffuse</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Variable intellectual disability affecting rule learning and complex, time-pressured decision-making</li>
+        <li>Generally slower reaction time — comprehensive individualised functional assessment is essential rather than a diagnosis-based exclusion</li>
+        <li>Elevated risk of early-onset Alzheimer's disease from the 40s — build earlier and more frequent cognitive re-screening into follow-up</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Autism spectrum <span class="region">variable, individual</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>No uniform driving profile — presentation and driving risk vary greatly between individuals; avoid assuming risk from the diagnosis alone</li>
+        <li>Where relevant: difficulty with rapid, multi-step decisions under time pressure, or sensory overload in busy/unpredictable traffic environments</li>
+        <li>Rigid rule-following can be a genuine safety strength rather than a deficit — assess function, not stereotype</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>ADHD <span class="region">frontostriatal</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Inattention, impulsivity, and a documented association with elevated risk-taking behind the wheel</li>
+        <li>Medication timing and coverage across the length of the driving task is often the practical issue, not baseline ability</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/psychiatric-conditions" target="_blank">Austroads: psychiatric conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Cerebral palsy <span class="region">motor / corticospinal</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Spasticity, dystonia, or coordination difficulty affecting steering and pedal use — cognition is frequently unaffected</li>
+        <li>Vehicle modification and physical/functional assessment is usually the central issue rather than cognitive risk</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/musculoskeletal-conditions" target="_blank">Austroads: musculoskeletal conditions →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Demyelinating &amp; neuromuscular</div>
+
+    <details class="dv-rf-card">
+      <summary>Multiple sclerosis <span class="region">white matter, variable location</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Fatigue-related decline over the course of a drive — screen at a representative point in the client's typical fatigue cycle, not just first thing</li>
+        <li>Processing speed deficits and visual disturbance (optic neuritis)</li>
+        <li>Relapsing-remitting course means fitness can change meaningfully between scheduled reviews</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/other-neurological-and-neurodevelopmental-conditions" target="_blank">Austroads: other neurological conditions →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Spinal cord injury <span class="region">motor / sensory, level-dependent</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Motor and sensory function below the injury level — focus assessment on adaptive equipment and physical capacity</li>
+        <li>Cognition is typically intact unless there is a concurrent traumatic brain injury from the same incident — confirm this rather than assume it</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/musculoskeletal-conditions" target="_blank">Austroads: musculoskeletal conditions →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Seizure &amp; episodic</div>
+
+    <details class="dv-rf-card">
+      <summary>Epilepsy / seizure disorders <span class="region">focal or generalised</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>The core risk is sudden loss of control, not an ongoing skills deficit — this off-road matrix is not the right tool to establish fitness here</li>
+        <li>Mandated seizure-free periods apply and are set by the licensing authority, not by off-road cognitive/motor performance</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/neurological-conditions/seizures-and-epilepsy" target="_blank">Austroads: seizures and epilepsy →</a></div>
+    </details>
+
+    <details class="dv-rf-card">
+      <summary>Cardiac syncope / arrhythmia <span class="region">cardiovascular</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Risk of sudden incapacitation at the wheel, independent of cognitive or motor screening results</li>
+        <li>Cardiology clearance is the relevant gate here, not an off-road OT battery</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/cardiovascular-conditions" target="_blank">Austroads: cardiovascular conditions →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Systemic / medical</div>
+
+    <details class="dv-rf-card">
+      <summary>Diabetes mellitus <span class="region">metabolic / peripheral / retinal</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Hypoglycaemia unawareness — sudden incapacitation risk, ask specifically about awareness of low blood sugar episodes</li>
+        <li>Peripheral neuropathy affecting pedal sensation and fine control</li>
+        <li>Diabetic retinopathy affecting visual acuity and visual fields</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/diabetes-mellitus" target="_blank">Austroads: diabetes mellitus →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Psychiatric</div>
+
+    <details class="dv-rf-card">
+      <summary>Severe psychiatric illness <span class="region">acute psychosis, severe mood episode</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Impaired judgement and insight during acute episodes — risk is often episodic rather than a stable trait</li>
+        <li>Sedating medication effects can add a separate, independent risk on top of the underlying illness</li>
+        <li>Reassess at illness stage transitions rather than relying on a single point-in-time clearance</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/psychiatric-conditions" target="_blank">Austroads: psychiatric conditions →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-rf-group">
+    <div class="dv-rf-group-title">Sleep</div>
+
+    <details class="dv-rf-card">
+      <summary>Obstructive sleep apnoea &amp; other sleep disorders <span class="region">excessive daytime sleepiness</span></summary>
+      <div class="dv-rf-body"><ul>
+        <li>Microsleep risk, particularly on monotonous or highway driving</li>
+        <li>Subjective sleepiness ratings correlate poorly with objective risk — don't rely on self-report alone</li>
+      </ul><a class="dv-rf-link" href="https://austroads.gov.au/publications/assessing-fitness-to-drive/ap-g56/sleep-disorders" target="_blank">Austroads: sleep disorders →</a></div>
+    </details>
+  </div>
+
+  <div class="dv-section-label" style="margin-top:56px;"><span class="num">3</span><h2>Recommendations for reports</h2></div>
+  <p class="dv-section-intro">Draft wording for the recommendation section of an OT report, keyed to the risk band above. Edit each block to fit the client before pasting into your report — these are starting points, not final text.</p>
+
+  <div class="dv-rf-note">
+    Reporting and mandatory-notification obligations for driving fitness vary by Australian state/territory and by licensing authority — always check your jurisdiction's current requirements alongside Austroads' <a href="https://austroads.gov.au/drivers-and-vehicles/assessing-fitness-to-drive" target="_blank">Assessing Fitness to Drive</a> standard before finalising a report. Off-road results should always be reported as informing the recommendation, not as a standalone determination of fitness to drive.
+  </div>
+
+  <div class="dv-report-tpl">
+    <h4 style="color:var(--dv-green);">Low risk — suggested wording</h4>
+    <textarea readonly id="dv-tpl-low">Off-road screening across cognitive, visual-perceptual, physical, and self-awareness domains was largely within normal limits, with no findings indicating significant risk to driving safety. Based on the profile of results, [client name] is considered likely to demonstrate safe driving performance on an on-road assessment. It is recommended that [client name] proceed to an on-road driving assessment with an occupational therapist driving assessor to confirm fitness to drive, in line with Austroads' Assessing Fitness to Drive standard. This off-road screen supports, but does not replace, that on-road evaluation.</textarea>
+    <button class="dv-copy-btn" type="button" onclick="dvCopyText('dv-tpl-low')">Copy text</button>
+  </div>
+
+  <div class="dv-report-tpl">
+    <h4 style="color:var(--dv-amber);">Medium risk — suggested wording</h4>
+    <textarea readonly id="dv-tpl-medium">Off-road screening identified a mixed profile, with borderline or inconsistent performance across [name the flagged domains, e.g. processing speed, visuospatial skills]. No single off-road measure was sufficient to confidently classify [client name] as safe or unsafe to drive. It is recommended that [client name] undergo a comprehensive on-road driving assessment with an occupational therapist driving assessor before any decision is made about driving status. Consideration should also be given to whether targeted rehabilitation, compensatory strategies, or vehicle modifications could address the domains flagged above, with re-screening after intervention if appropriate.</textarea>
+    <button class="dv-copy-btn" type="button" onclick="dvCopyText('dv-tpl-medium')">Copy text</button>
+  </div>
+
+  <div class="dv-report-tpl">
+    <h4 style="color:var(--dv-red);">High risk — suggested wording</h4>
+    <textarea readonly id="dv-tpl-high">Off-road screening identified significant impairment across multiple domains [name the flagged domains], and/or a classification with high published specificity for unsafe driving performance (e.g. DriveSafe/DriveAware "unsafe" classification, or absent self-awareness of driving ability). These findings raise significant concern regarding current fitness to drive. It is recommended that [client name] does not drive pending a comprehensive on-road driving assessment with an occupational therapist driving assessor. Given the level of concern, it is further recommended that this outcome, and the reasoning behind it, be discussed directly with [client name], their referring medical practitioner, and (where relevant and in line with jurisdictional requirements) reported to the driver licensing authority.</textarea>
+    <button class="dv-copy-btn" type="button" onclick="dvCopyText('dv-tpl-high')">Copy text</button>
+  </div>
+
+  <div class="dv-section-label" style="margin-top:56px;"><span class="num">4</span><h2>Evidence base</h2></div>
+  <p class="dv-section-intro">This matrix's weighting and cutoffs are drawn from the following peer-reviewed sources. Read the original studies before adapting cutoffs for a specific population.</p>
+
+  <div class="dv-refs">
+    <ol>
+      <li>Austroads &amp; National Transport Commission. <em>Assessing Fitness to Drive</em> (AP-G56-22), the national medical standards used by Australian and New Zealand driver licensing authorities, including condition-specific criteria for neurological, cardiovascular, psychiatric, and sleep disorders. <a href="https://austroads.gov.au/drivers-and-vehicles/assessing-fitness-to-drive" target="_blank">austroads.gov.au</a></li>
+      <li>Unsworth, C. A., Pallant, J. F., Russell, K. J., & So, M. H. Development of the Occupational Therapy–Driver Off-Road Assessment Battery (OT‑DORA), reporting content and predictive validity from a 246-client sample and a CART model. <a href="https://pubmed.ncbi.nlm.nih.gov/22272880/" target="_blank">PubMed 22272880</a></li>
+      <li>Unsworth, C. A., & Baker, A. Predicting fitness-to-drive after stroke using the OT‑DORA Battery: a four-subtest CART model reached AUC 0.83 across 148 post-stroke clients. <em>Disability and Rehabilitation</em>, 2018. <a href="https://pubmed.ncbi.nlm.nih.gov/29488407/" target="_blank">PubMed 29488407</a></li>
+      <li>Kay, L. G., Bundy, A. C., & Cheal, B. Original validation of DriveSafe/DriveAware against real-traffic on-road outcomes, establishing trichotomised safe/unsafe/further-testing cutoffs. <em>American Journal of Occupational Therapy</em>, 2009. <a href="https://pubmed.ncbi.nlm.nih.gov/19735779/" target="_blank">PubMed 19735779</a></li>
+      <li>Vito, G. et al. Systematic review of DriveSafe DriveAware diagnostic accuracy, reliability, and clinical utility across multiple validation cohorts. <em>Australasian Journal on Ageing</em>, 2023. <a href="https://onlinelibrary.wiley.com/doi/10.1111/ajag.13166" target="_blank">Wiley 10.1111/ajag.13166</a></li>
+      <li>Roy, M., & Molnar, F. J. Systematic review of 47 studies on Trail Making Test Part B cutoffs for fitness-to-drive, supporting the "3-or-3" rule. <em>Canadian Geriatrics Journal</em>, 2013. <a href="https://cgjonline.ca/index.php/cgj/article/download/76/140?inline=1" target="_blank">CGJ open access</a></li>
+      <li>Krasniuk, S., Crizzle, A. M., Toxopeus, R., Mychael, D., & Prince, N. Predictive ability of Trails B and UFOV cutoffs specifically in clients referred for comprehensive driving evaluations. <em>Canadian Journal of Occupational Therapy</em>, 2023. <a href="https://journals.sagepub.com/doi/10.1177/00084174221117708" target="_blank">SAGE 10.1177/00084174221117708</a></li>
+    </ol>
+  </div>
+
+  <footer>Built as a clinical decision-support prototype · verify cutoffs against your jurisdiction's licensing standards before deployment</footer>
+</div>
+
+
+</div>
+
+    <!-- ================= PANEL: EVIDENCE BASE ================= -->
+  </div>
+</div>
+
+<div class="panel hidden panel-wide" id="panel-evidence">
+  <div class="field">
+    <label style="font-size:0.95rem;">Add a research article</label>
+    <div class="field-row">
+      <div class="field"><label>Title</label><input type="text" id="ev-title" placeholder="Article title"></div>
+      <div class="field"><label>Authors &amp; Year</label><input type="text" id="ev-authors" placeholder="e.g. Unsworth et al., 2018"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Journal / Source</label><input type="text" id="ev-journal" placeholder="e.g. Disability and Rehabilitation"></div>
+      <div class="field"><label>Link (DOI / URL)</label><input type="text" id="ev-link" placeholder="https://…"></div>
+    </div>
+    <div class="field"><label>Abstract / key notes (paste here — used to generate the AI summary)</label><textarea id="ev-abstract" placeholder="Paste the abstract or your notes on key findings…"></textarea></div>
+    <button class="tbtn primary" id="ev-add" type="button">+ Add to Evidence Table</button>
+  </div>
+
+  <div class="ev-layout" style="margin-top:24px;">
+    <div class="ev-table-wrap">
+      <table class="ev-table">
+        <thead><tr><th>Title</th><th>Authors / Year</th><th>Source</th><th></th></tr></thead>
+        <tbody id="ev-tbody"></tbody>
+      </table>
+    </div>
+    <div class="ev-detail" id="ev-detail">
+      <div class="ev-empty">Select an article from the table to view details and generate an AI summary.</div>
+    </div>
+  </div>
+
+  <div class="ndis-box">
+    <h4>When this evidence matters for an NDIS report</h4>
+    <p>Under Section 34 of the NDIS Act, a support must meet <strong>all six</strong> "reasonable and necessary" criteria before it can be funded. Citing peer-reviewed evidence in your report is most useful where it directly helps establish one of these:</p>
+    <ol>
+      <li><strong>Linked to the participant's goals</strong> — evidence that a strategy or support is effective for the participant's stated goals strengthens the link between the support and their plan.</li>
+      <li><strong>Supports social and economic participation</strong> — research demonstrating functional or participation gains (e.g. return to driving, community access, employment) helps justify this criterion.</li>
+      <li><strong>Value for money</strong> — evidence comparing outcomes or cost-effectiveness of an intervention can support value-for-money arguments, especially for higher-cost supports (e.g. equipment, intensive therapy blocks).</li>
+      <li><strong>Effective and evidence-based ("current good practice")</strong> — this is where citing validated assessment tools or intervention research is most directly relevant; the NDIA is more likely to fund supports with a demonstrated evidence base.</li>
+      <li><strong>Accounts for informal and other supports</strong> — evidence on the limits of family/carer-provided support (e.g. supervision burden research) can help justify formal funded supports.</li>
+      <li><strong>Most appropriately funded by the NDIS</strong> — evidence clarifying that a support falls within the NDIS's remit (rather than health, education, or another system) helps address this criterion.</li>
+    </ol>
+    <p style="margin-top:10px;">In practice, criterion 4 (evidence-based / current good practice) is where most cited research earns its place — but framing your evidence explicitly against whichever criterion the NDIA is most likely to query strengthens the report. This is general information, not legal advice — refer to the NDIS Act and current NDIS Guidelines for the authoritative wording.</p>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="print-area" style="display:none;"></div>
+<script>
+/* =========================================================
+   THERAPEUTIC STRATEGIES DATABASE — combined app.js
+   ========================================================= */
+const DEFAULT_CATEGORIES = ["Emotional regulation","Driving","Coping skills","Trauma","Leisure"];
+
+const COLOR_SCHEMES = {
+  teal:   {primary:"#1F6F72", light:"#E9F3F2", text:"#154F52"},
+  coral:  {primary:"#E97B5B", light:"#FBEAE3", text:"#8A3B24"},
+  purple: {primary:"#7A5CA3", light:"#F0EAF7", text:"#4B3468"},
+  slate:  {primary:"#516074", light:"#EAEDF1", text:"#2E3846"},
+  mono:   {primary:"#3A3A3A", light:"#F1F1F1", text:"#1A1A1A"},
+  pinksage:{primary:"#C9739A", light:"#FBEAF1", text:"#7A2F53"},
+  skyyellow:{primary:"#4E8FC7", light:"#FCF6E0", text:"#1F4E77"}
+};
+
+const state = {
+  strategies: [],
+  categories: [],
+  planStrategyIds: [],
+  goalBank: [],
+  evidence: [],
+  cloud: {secret:"", binId:""},
+  apiKey: "",
+  editingStrategyId: null
+};
+
+/* ---------- persistence ---------- */
+function loadState(){
+  try{ state.strategies = JSON.parse(localStorage.getItem("ts_strategies")||"[]"); }catch(e){ state.strategies = []; }
+  try{ state.categories = JSON.parse(localStorage.getItem("ts_categories")||"null") || [...DEFAULT_CATEGORIES]; }catch(e){ state.categories = [...DEFAULT_CATEGORIES]; }
+  try{ state.cloud = JSON.parse(localStorage.getItem("ts_cloud")||"null") || {secret:"",binId:""}; }catch(e){ state.cloud = {secret:"",binId:""}; }
+  try{ state.goalBank = JSON.parse(localStorage.getItem("ts_goalBank")||"[]"); }catch(e){ state.goalBank = []; }
+  try{ state.evidence = JSON.parse(localStorage.getItem("ts_evidence")||"[]"); }catch(e){ state.evidence = []; }
+  try{ state.apiKey = localStorage.getItem("ts_apiKey")||""; }catch(e){ state.apiKey = ""; }
+}
+function saveStrategies(){ localStorage.setItem("ts_strategies", JSON.stringify(state.strategies)); }
+function saveCategories(){ localStorage.setItem("ts_categories", JSON.stringify(state.categories)); }
+function saveCloud(){ localStorage.setItem("ts_cloud", JSON.stringify(state.cloud)); }
+function saveGoalBank(){ localStorage.setItem("ts_goalBank", JSON.stringify(state.goalBank)); }
+function saveEvidence(){ localStorage.setItem("ts_evidence", JSON.stringify(state.evidence)); }
+function saveApiKey(){ localStorage.setItem("ts_apiKey", state.apiKey||""); }
+
+function uid(){ return 'id_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+function allDomains(){
+  const fromStrategies = new Set();
+  state.strategies.forEach(s => (s.domains||[]).forEach(d=>fromStrategies.add(d)));
+  const combined = new Set([...state.categories, ...fromStrategies]);
+  return Array.from(combined).sort();
+}
+
+/* ---------- text formatting ----------
+   Supports **bold**, lines starting with "- " become bullet list items,
+   and *X* single-letter wrapping for acronyms. */
+function escapeHtml(str){
+  return (str||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function formatRichText(raw){
+  if(!raw) return "";
+  const lines = escapeHtml(raw).split(/\n/);
+  let html = "", inList = false;
+  lines.forEach(line=>{
+    const bulletMatch = line.match(/^\s*-\s+(.*)/);
+    if(bulletMatch){
+      if(!inList){ html += "<ul>"; inList = true; }
+      html += `<li>${boldify(bulletMatch[1])}</li>`;
+    } else {
+      if(inList){ html += "</ul>"; inList = false; }
+      if(line.trim() !== "") html += `<p>${boldify(line)}</p>`;
+    }
+  });
+  if(inList) html += "</ul>";
+  return html;
+}
+function boldify(text){
+  return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+function formatAcronym(raw){
+  if(!raw) return "";
+  return escapeHtml(raw).replace(/\*(.)\*/g, "<strong>$1</strong>");
+}
+
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportPrintableAsPdf(html, filename){
+  const printArea = document.getElementById("print-area");
+  printArea.style.display = "block";
+  printArea.style.position = "fixed";
+  printArea.style.left = "-9999px";
+  printArea.style.width = "760px";
+  printArea.innerHTML = html.replace(/<!DOCTYPE[\s\S]*?<body[^>]*>/i,"").replace(/<\/body>[\s\S]*$/i,"");
+  await new Promise(r=>setTimeout(r,50));
+  const canvas = await html2canvas(printArea, {scale:2});
+  const imgData = canvas.toDataURL("image/png");
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("p","pt","a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const imgWidth = pageWidth - 40;
+  const imgHeight = canvas.height * (imgWidth/canvas.width);
+  let heightLeft = imgHeight, position = 20;
+  pdf.addImage(imgData,"PNG",20,position,imgWidth,imgHeight);
+  heightLeft -= (pdf.internal.pageSize.getHeight()-40);
+  while(heightLeft > 0){
+    position = heightLeft - imgHeight + 20;
+    pdf.addPage();
+    pdf.addImage(imgData,"PNG",20,position,imgWidth,imgHeight);
+    heightLeft -= (pdf.internal.pageSize.getHeight()-40);
+  }
+  pdf.save(filename);
+  printArea.style.display = "none";
+  printArea.innerHTML = "";
+}
+
+/* ---------- AI helper ----------
+   Tries these in order, so this works whether you're previewing inside Claude or
+   viewing the deployed Netlify site:
+   1. Netlify Function proxy for Gemini (/.netlify/functions/gemini) — FREE, no
+      expiring credit, no credit card. Requires GEMINI_API_KEY set as a Netlify
+      environment variable. Get a free key at aistudio.google.com.
+   2. Netlify Function proxy for Claude (/.netlify/functions/claude) — requires
+      purchased Anthropic credit. Only used if the Gemini function isn't set up.
+   3. Direct call to Anthropic with no key — works automatically inside Claude's
+      own preview sandbox (free, but only while previewing inside Claude itself).
+   4. Direct call with a manually saved key (⚙️ AI Settings) — last-resort fallback,
+      often blocked by browsers on a real deployed site. */
+async function tryNetlifyFunction(path, promptText){
+  try{
+    const res = await fetch(path, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({prompt: promptText})
+    });
+    const contentType = res.headers.get("content-type") || "";
+    const looksLikeOurFunction = contentType.includes("application/json");
+
+    if(res.ok && looksLikeOurFunction){
+      const data = await res.json();
+      if(data.text) return {ok:true, text:data.text};
+      return {ok:false, notDeployed:false, error:"Function returned an empty response."};
+    }
+    if(!looksLikeOurFunction){
+      // Not JSON — this is Netlify's own "page not found" HTML, meaning the function
+      // truly isn't deployed at this path (as opposed to the function itself erroring).
+      return {ok:false, notDeployed:true};
+    }
+    // It IS our function responding (valid JSON), just with a non-2xx status —
+    // a real error from inside the function itself. Surface it, don't mask it.
+    const data = await res.json().catch(()=>({}));
+    return {ok:false, notDeployed:false, error: data.error || `Function returned status ${res.status} with no error detail.`};
+  }catch(err){
+    // A genuine network-level failure (offline, DNS, blocked request) — not a 404.
+    return {ok:false, notDeployed:false, error: "Network error reaching the function: " + err.message};
+  }
+}
+
+async function callClaude(promptText){
+  // Path 1: free Gemini function
+  const gemini = await tryNetlifyFunction("/.netlify/functions/gemini", promptText);
+  if(gemini.ok) return gemini.text;
+  if(!gemini.notDeployed) throw new Error("Gemini function error: " + gemini.error);
+
+  // Path 2: paid Claude function (only reached if Gemini function isn't deployed)
+  const claude = await tryNetlifyFunction("/.netlify/functions/claude", promptText);
+  if(claude.ok) return claude.text;
+  if(!claude.notDeployed) throw new Error("Claude function error: " + claude.error);
+
+  // Path 3 / 4: direct call to Anthropic (no server function deployed at all)
+  const usingOwnKey = !!state.apiKey;
+  const body = { model: usingOwnKey ? "claude-sonnet-5" : "claude-sonnet-4-6", max_tokens:1000, messages:[{role:"user", content:promptText}] };
+  const headers = {"Content-Type":"application/json"};
+  if(usingOwnKey){
+    headers["x-api-key"] = state.apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
+  let res;
+  try{
+    res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers, body: JSON.stringify(body) });
+  }catch(networkErr){
+    throw new Error(
+      usingOwnKey
+        ? "The browser blocked the direct request to Anthropic. Set up the free Gemini function proxy instead (see ⚙️ AI Settings) — no browser-side key, no CORS issues, and it's free."
+        : "Couldn't reach the AI service. If you're viewing the deployed Netlify site, set up the free Gemini function proxy (see ⚙️ AI Settings)."
+    );
+  }
+  if(!res.ok){
+    const errText = await res.text().catch(()=> "");
+    throw new Error(`API error ${res.status}. ${usingOwnKey ? "Check your API key in ⚙️ AI Settings." : "Add an Anthropic API key in ⚙️ AI Settings, or set up the Netlify Function proxy, to use AI features on the deployed site."} ${errText.slice(0,200)}`);
+  }
+  const data = await res.json();
+  return (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+}
+
+/* ---------- modal helpers ---------- */
+function openModal(html){
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `<div class="modal-overlay" id="activeOverlay">${html}</div>`;
+  root.querySelector(".modal-overlay").addEventListener("click", e=>{
+    if(e.target.id === "activeOverlay") closeModal();
+  });
+}
+function closeModal(){ document.getElementById("modalRoot").innerHTML = ""; }
+function wireModalCloseButtons(){
+  document.querySelectorAll("[data-close]").forEach(btn=>btn.addEventListener("click", closeModal));
+}
+
+/* ---------- AI Settings modal ---------- */
+function openAiSettingsModal(){
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><h2>⚙️ AI Settings</h2><button class="modal-close" data-close>×</button></div>
+      <p class="helper-text"><strong>✨ Free option (recommended):</strong> Google's Gemini API has a genuinely free tier — no credit card, no expiring credit. Get a key at <strong>aistudio.google.com</strong> (Get API Key → Create API key), then in Netlify go to <strong>Site settings → Environment variables</strong> and add <code>GEMINI_API_KEY</code> with that value. Make sure <code>netlify/functions/gemini.js</code> is included in your site's deployed folder. Redeploy, and AI features work for free for anyone visiting the site.</p>
+      <p class="helper-text" style="border-top:1px solid var(--line);padding-top:10px;"><strong>Paid alternative:</strong> if you'd rather use Claude specifically, add <code>netlify/functions/claude.js</code> and set <code>ANTHROPIC_API_KEY</code> the same way — this needs purchased Anthropic credit.</p>
+      <p class="helper-text">Both proxy options work automatically with no setup at all while you're previewing inside Claude.</p>
+      <p class="helper-text" style="border-top:1px solid var(--line);padding-top:10px;"><strong>Last-resort fallback:</strong> save an Anthropic key below for this browser only. Many browsers block this on a live deployed site, so treat it as a backup, not the main path. Stored only in this browser's local storage.</p>
+      <div class="field"><label>Anthropic API Key (fallback, this browser only)</label><input type="password" id="ai-key" value="${escapeHtml(state.apiKey||"")}" placeholder="sk-ant-…"></div>
+      <div class="modal-actions">
+        <button class="btn primary" id="ai-save" type="button">Save Key</button>
+        <button class="btn ghost" id="ai-clear" type="button">Clear Key</button>
+        <button class="btn ghost" data-close>Close</button>
+      </div>
+    </div>
+  `);
+  wireModalCloseButtons();
+  document.getElementById("ai-save").addEventListener("click", ()=>{
+    state.apiKey = document.getElementById("ai-key").value.trim();
+    saveApiKey();
+    alert("API key saved.");
+    closeModal();
+  });
+  document.getElementById("ai-clear").addEventListener("click", ()=>{
+    state.apiKey = ""; saveApiKey();
+    document.getElementById("ai-key").value = "";
+  });
+}
+document.getElementById("btnAiSettings").addEventListener("click", openAiSettingsModal);
+
+/* ---------- Manage Categories modal ---------- */
+function openManageCategoriesModal(){
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><h2>🏷️ Manage Categories</h2><button class="modal-close" data-close>×</button></div>
+      <p class="helper-text">Add, rename, or delete categories. Deleting a category removes it from any strategies tagged with it (the strategies themselves are kept).</p>
+      <div id="cat-list"></div>
+      <div class="field-row" style="margin-top:12px;">
+        <input type="text" id="cat-new" placeholder="New category name" style="flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:9px;">
+        <button class="btn primary" id="cat-add" type="button">+ Add</button>
+      </div>
+      <div class="modal-actions"><button class="btn ghost" data-close>Close</button></div>
+    </div>
+  `);
+  wireModalCloseButtons();
+  renderCategoryManageList();
+  document.getElementById("cat-add").addEventListener("click", ()=>{
+    const inp = document.getElementById("cat-new");
+    const val = inp.value.trim();
+    if(val && !state.categories.includes(val)){
+      state.categories.push(val);
+      saveCategories();
+      inp.value = "";
+      renderCategoryManageList();
+      refreshAll();
+    }
+  });
+}
+function renderCategoryManageList(){
+  const box = document.getElementById("cat-list");
+  box.innerHTML = state.categories.map((c,i)=>`
+    <div class="cat-manage-row">
+      <input type="text" data-idx="${i}" value="${escapeHtml(c)}">
+      <button type="button" data-idx="${i}" class="cat-rename">✓</button>
+      <button type="button" data-idx="${i}" class="cat-delete">✕</button>
+    </div>`).join("");
+  box.querySelectorAll(".cat-rename").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      const input = box.querySelector(`input[data-idx="${idx}"]`);
+      const newVal = input.value.trim();
+      if(!newVal) return;
+      const oldVal = state.categories[idx];
+      state.categories[idx] = newVal;
+      state.strategies.forEach(s=>{ s.domains = (s.domains||[]).map(d=> d===oldVal ? newVal : d); });
+      saveCategories(); saveStrategies();
+      refreshAll();
+    });
+  });
+  box.querySelectorAll(".cat-delete").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      const val = state.categories[idx];
+      if(!confirm(`Delete category "${val}"? Strategies keep their other tags.`)) return;
+      state.categories.splice(idx,1);
+      state.strategies.forEach(s=>{ s.domains = (s.domains||[]).filter(d=>d!==val); });
+      saveCategories(); saveStrategies();
+      renderCategoryManageList();
+      refreshAll();
+    });
+  });
+}
+document.getElementById("btnManageCategories").addEventListener("click", openManageCategoriesModal);
+
+/* ---------- Nav / tab switching ---------- */
+const PANEL_TITLES = {
+  strategies: {title:"📚 Strategy Database", sub:"Search, filter, and manage your intervention strategies."},
+  goalplanning: {title:"🎯 Goal Planning", sub:"Build a client treatment plan from your strategy database."},
+  safety: {title:"🚦 Safety & Wellness Plan", sub:"A traffic-light plan for baseline, struggling, and crisis states."},
+  goalbank: {title:"🏦 Goal Bank", sub:"Generate and store SMART occupational therapy goals."},
+  sensory: {title:"🌀 Sensory Diet", sub:"Plan sensory activities across the day."},
+  driving: {title:"🚗 Driving Domain", sub:"Fitness-to-drive screening, diagnosis red flags, and report wording."},
+  evidence: {title:"📖 Evidence Base", sub:"Track research articles and summarise them for reports."}
+};
+function switchPanel(name){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.add("hidden"));
+  document.getElementById("panel-"+name).classList.remove("hidden");
+  document.querySelectorAll(".nav-btn[data-panel]").forEach(b=>b.classList.toggle("active", b.dataset.panel===name));
+  document.getElementById("topbarTitle").textContent = PANEL_TITLES[name].title;
+  document.getElementById("topbarSub").textContent = PANEL_TITLES[name].sub;
+  if(name === "goalplanning") renderGoalPlanningStrategyPicker();
+}
+document.querySelectorAll(".nav-btn[data-panel]").forEach(btn=>{
+  btn.addEventListener("click", ()=>switchPanel(btn.dataset.panel));
+});
+
+/* ---------- Mobile sidebar drawer ---------- */
+function openSidebarDrawer(){
+  document.querySelector(".sidebar").classList.add("open");
+  document.getElementById("sidebarOverlay").classList.add("show");
+}
+function closeSidebarDrawer(){
+  document.querySelector(".sidebar").classList.remove("open");
+  document.getElementById("sidebarOverlay").classList.remove("show");
+}
+document.getElementById("hamburgerBtn").addEventListener("click", openSidebarDrawer);
+document.getElementById("sidebarOverlay").addEventListener("click", closeSidebarDrawer);
+document.querySelector(".sidebar").addEventListener("click", e=>{
+  if(e.target.closest("button")) closeSidebarDrawer();
+});
+</script>
+<script>
+/* ---------- rendering: strategy grid ---------- */
+function renderDomainFilterOptions(){
+  const sel = document.getElementById("domainFilter");
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Categories</option>' +
+    allDomains().map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+  sel.value = current;
+}
+
+function renderStrategyGrid(){
+  const grid = document.getElementById("strategyGrid");
+  const q = document.getElementById("searchInput").value.trim().toLowerCase();
+  const domainFilter = document.getElementById("domainFilter").value;
+  let list = state.strategies.filter(s=>{
+    const matchesQ = !q || s.name.toLowerCase().includes(q) || (s.description||"").toLowerCase().includes(q);
+    const matchesDomain = !domainFilter || (s.domains||[]).includes(domainFilter);
+    return matchesQ && matchesDomain;
+  });
+  if(list.length === 0){
+    grid.innerHTML = `<div class="empty-state">No strategies yet. Click <strong>✨ Add Strategy</strong> to create your first one, or use <strong>📥 Bulk Import</strong>.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(s=>{
+    const inPlan = state.planStrategyIds.includes(s.id);
+    return `
+    <div class="strategy-card">
+      <h3>${s.acronym ? formatAcronym(s.acronym)+" — " : ""}${escapeHtml(s.name)}</h3>
+      <div class="domain-pills">${(s.domains||[]).map(d=>`<span class="pill">${escapeHtml(d)}</span>`).join("")}</div>
+      ${s.description ? `<div>${formatRichText(s.description)}</div>` : ""}
+      ${(s.subcategories&&s.subcategories.length) ? `<div class="notes">Includes: ${s.subcategories.map(escapeHtml).join(", ")}</div>` : ""}
+      ${s.notes ? `<div class="notes">${formatRichText(s.notes)}</div>` : ""}
+      ${s.link ? `<a class="res-link" href="${escapeHtml(s.link)}" target="_blank" rel="noopener">🔗 ${escapeHtml(s.linkLabel||"Resource")}</a>` : ""}
+      <div class="card-actions">
+        <button class="add-plan" data-action="toggle-plan" data-id="${s.id}">${inPlan ? "✓ In Plan" : "+ Add to Plan"}</button>
+        <button data-action="edit" data-id="${s.id}">Edit</button>
+        <button class="danger" data-action="delete" data-id="${s.id}">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function refreshAll(){
+  renderDomainFilterOptions();
+  renderStrategyGrid();
+  if(!document.getElementById("panel-goalplanning").classList.contains("hidden")) renderGoalPlanningStrategyPicker();
+  renderPlanList();
+}
+
+document.getElementById("strategyGrid").addEventListener("click", e=>{
+  const btn = e.target.closest("button[data-action]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if(action === "toggle-plan"){
+    const idx = state.planStrategyIds.indexOf(id);
+    if(idx>-1) state.planStrategyIds.splice(idx,1); else state.planStrategyIds.push(id);
+    refreshAll();
+  } else if(action === "edit"){
+    openAddStrategyModal(id);
+  } else if(action === "delete"){
+    if(confirm("Delete this strategy? This can't be undone.")){
+      state.strategies = state.strategies.filter(s=>s.id!==id);
+      state.planStrategyIds = state.planStrategyIds.filter(pid=>pid!==id);
+      saveStrategies();
+      refreshAll();
+    }
+  }
+});
+document.getElementById("searchInput").addEventListener("input", renderStrategyGrid);
+document.getElementById("domainFilter").addEventListener("change", renderStrategyGrid);
+document.getElementById("btnClearFilters").addEventListener("click", ()=>{
+  document.getElementById("searchInput").value = "";
+  document.getElementById("domainFilter").value = "";
+  renderStrategyGrid();
+});
+
+/* ============ Add / Edit Strategy Modal ============ */
+let tempSubcats = [];
+let tempSelectedDomains = [];
+
+function openAddStrategyModal(editId){
+  state.editingStrategyId = editId || null;
+  const existing = editId ? state.strategies.find(s=>s.id===editId) : null;
+  tempSubcats = existing ? [...(existing.subcategories||[])] : [];
+  tempSelectedDomains = existing ? [...(existing.domains||[])] : [];
+
+  openModal(`
+    <div class="modal wide">
+      <div class="modal-head">
+        <h2>${existing ? "Edit Strategy" : "Add New Strategy"}</h2>
+        <button class="modal-close" data-close>×</button>
+      </div>
+      <div class="field">
+        <label>Strategy Name *</label>
+        <input type="text" id="f-name" value="${existing ? escapeHtml(existing.name) : ""}">
+      </div>
+      <div class="field">
+        <label>Description (use **bold** and lines starting with "- " for bullets)</label>
+        <textarea id="f-description">${existing ? escapeHtml(existing.description||"") : ""}</textarea>
+      </div>
+      <div class="field">
+        <label>Categories</label>
+        <div class="domain-chip-picker" id="domainChips"></div>
+        <p class="helper-text">To add a brand-new category, use 🏷️ Manage Categories in the sidebar.</p>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Resource Link (YouTube / PDF)</label>
+          <input type="text" id="f-link" value="${existing ? escapeHtml(existing.link||"") : ""}">
+        </div>
+        <div class="field">
+          <label>Link Label</label>
+          <input type="text" id="f-linkLabel" value="${existing ? escapeHtml(existing.linkLabel||"") : ""}">
+        </div>
+      </div>
+      <div class="field">
+        <label>Clinician Notes</label>
+        <textarea id="f-notes">${existing ? escapeHtml(existing.notes||"") : ""}</textarea>
+      </div>
+      <div class="field">
+        <label>Acronym (optional — wrap bold letters in *asterisks*, e.g. *A*BC *P*LEASE)</label>
+        <input type="text" id="f-acronym" value="${existing ? escapeHtml(existing.acronym||"") : ""}">
+      </div>
+      <div class="field">
+        <label>Subcategories (optional — e.g. Bottom surgery, Top surgery)</label>
+        <div id="subcatList"></div>
+        <button class="btn" id="btnAddSubcat" type="button">+ Add Subcategory</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" data-close>Cancel</button>
+        <button class="btn primary" id="btnSaveStrategy">Save Strategy</button>
+      </div>
+    </div>
+  `);
+  renderDomainChips();
+  renderSubcatList();
+  wireModalCloseButtons();
+
+  document.getElementById("btnAddSubcat").addEventListener("click", ()=>{
+    tempSubcats.push("");
+    renderSubcatList();
+  });
+  document.getElementById("btnSaveStrategy").addEventListener("click", saveStrategyFromForm);
+}
+
+function renderDomainChips(){
+  const box = document.getElementById("domainChips");
+  box.innerHTML = allDomains().map(d=>{
+    const sel = tempSelectedDomains.includes(d);
+    return `<button type="button" class="domain-chip ${sel?"selected":""}" data-domain="${escapeHtml(d)}">${escapeHtml(d)}</button>`;
+  }).join("");
+  box.querySelectorAll(".domain-chip").forEach(chip=>{
+    chip.addEventListener("click", ()=>{
+      const d = chip.dataset.domain;
+      const idx = tempSelectedDomains.indexOf(d);
+      if(idx>-1) tempSelectedDomains.splice(idx,1); else tempSelectedDomains.push(d);
+      renderDomainChips();
+    });
+  });
+}
+
+function renderSubcatList(){
+  const box = document.getElementById("subcatList");
+  box.innerHTML = tempSubcats.map((v,i)=>`
+    <div class="subcat-row">
+      <input type="text" data-idx="${i}" value="${escapeHtml(v)}">
+      <button type="button" data-idx="${i}" class="remove-subcat">✕</button>
+    </div>`).join("");
+  box.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("input", ()=>{ tempSubcats[inp.dataset.idx] = inp.value; });
+  });
+  box.querySelectorAll(".remove-subcat").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      tempSubcats.splice(btn.dataset.idx,1);
+      renderSubcatList();
+    });
+  });
+}
+
+function saveStrategyFromForm(){
+  const name = document.getElementById("f-name").value.trim();
+  if(!name){ alert("Strategy Name is required."); return; }
+  const data = {
+    name,
+    description: document.getElementById("f-description").value,
+    domains: [...tempSelectedDomains],
+    link: document.getElementById("f-link").value.trim(),
+    linkLabel: document.getElementById("f-linkLabel").value.trim(),
+    notes: document.getElementById("f-notes").value,
+    acronym: document.getElementById("f-acronym").value.trim(),
+    subcategories: tempSubcats.filter(s=>s.trim()!=="")
+  };
+  if(state.editingStrategyId){
+    const idx = state.strategies.findIndex(s=>s.id===state.editingStrategyId);
+    state.strategies[idx] = {...state.strategies[idx], ...data};
+  } else {
+    state.strategies.push({id: uid(), ...data});
+  }
+  saveStrategies();
+  closeModal();
+  refreshAll();
+}
+
+document.getElementById("btnAddStrategy").addEventListener("click", ()=>openAddStrategyModal(null));
+</script>
+<script>
+/* ============ Goal Planning (Treatment Plan) Panel ============ */
+function renderGoalPlanningStrategyPicker(){
+  const box = document.getElementById("gp-strategyPicker");
+  if(!box) return;
+  if(state.strategies.length === 0){
+    box.innerHTML = `<div class="plan-list-empty">No strategies in your database yet — add some in Strategy Database first.</div>`;
+    return;
+  }
+  box.innerHTML = state.strategies.map(s=>{
+    const checked = state.planStrategyIds.includes(s.id);
+    return `<label><input type="checkbox" class="gp-pick" data-id="${s.id}" ${checked?"checked":""}> ${escapeHtml(s.name)} <span style="color:var(--ink-soft);font-size:0.78rem;">${(s.domains||[]).join(", ")}</span></label>`;
+  }).join("");
+  box.querySelectorAll(".gp-pick").forEach(cb=>{
+    cb.addEventListener("change", ()=>{
+      const id = cb.dataset.id;
+      const idx = state.planStrategyIds.indexOf(id);
+      if(cb.checked && idx===-1) state.planStrategyIds.push(id);
+      else if(!cb.checked && idx>-1) state.planStrategyIds.splice(idx,1);
+      renderPlanList();
+      renderStrategyGrid();
+    });
+  });
+}
+
+function renderPlanList(){
+  const box = document.getElementById("tp-planList");
+  if(!box) return;
+  document.getElementById("planCount") && (document.getElementById("planCount").textContent = state.planStrategyIds.length);
+  if(state.planStrategyIds.length === 0){
+    box.innerHTML = `<div class="plan-list-empty">No strategies added yet. Pick strategies above, or use "+ Add to Plan" in the Strategy Database.</div>`;
+    return;
+  }
+  box.innerHTML = state.planStrategyIds.map(id=>{
+    const s = state.strategies.find(x=>x.id===id);
+    if(!s) return "";
+    return `<div class="plan-list-item"><span>${escapeHtml(s.name)}</span><button data-id="${id}" class="rm-plan-item">✕</button></div>`;
+  }).join("");
+  box.querySelectorAll(".rm-plan-item").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      state.planStrategyIds = state.planStrategyIds.filter(id=>id!==btn.dataset.id);
+      renderPlanList();
+      renderGoalPlanningStrategyPicker();
+      renderStrategyGrid();
+    });
+  });
+}
+
+document.getElementById("tp-includeTherapist").addEventListener("change", e=>{
+  document.getElementById("tp-therapistFields").classList.toggle("hidden", !e.target.checked);
+});
+document.getElementById("tp-includeDisclaimer").addEventListener("change", e=>{
+  document.getElementById("tp-disclaimerField").classList.toggle("hidden", !e.target.checked);
+});
+document.getElementById("tp-clearAll").addEventListener("click", ()=>{
+  state.planStrategyIds = [];
+  renderPlanList();
+  renderGoalPlanningStrategyPicker();
+  renderStrategyGrid();
+});
+
+function gatherTreatmentPlanData(){
+  return {
+    client: document.getElementById("tp-client").value,
+    date: document.getElementById("tp-date").value,
+    diagnosis: document.getElementById("tp-diagnosis").value,
+    goal: document.getElementById("tp-goal").value,
+    includeTherapist: document.getElementById("tp-includeTherapist").checked,
+    therapistName: document.getElementById("tp-therapistName").value,
+    ahpra: document.getElementById("tp-ahpra").value,
+    includeDisclaimer: document.getElementById("tp-includeDisclaimer").checked,
+    disclaimerText: document.getElementById("tp-disclaimerText").value,
+    scheme: "pinksage",
+    strategyIds: [...state.planStrategyIds]
+  };
+}
+
+function buildTreatmentPlanHtml(data){
+  const c = COLOR_SCHEMES.pinksage;
+  const strategies = data.strategyIds.map(id=>state.strategies.find(s=>s.id===id)).filter(Boolean);
+  const rows = strategies.map(s=>`
+    <div style="border:1px solid ${c.primary}33;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+      <h3 style="margin:0 0 6px;color:${c.text};">${s.acronym ? formatAcronym(s.acronym)+" — " : ""}${escapeHtml(s.name)}</h3>
+      <div style="margin-bottom:6px;">${(s.domains||[]).map(d=>`<span style="background:${c.light};color:${c.text};border-radius:20px;padding:2px 10px;font-size:12px;margin-right:4px;">${escapeHtml(d)}</span>`).join("")}</div>
+      ${formatRichText(s.description)}
+      ${s.link ? `<div><a href="${escapeHtml(s.link)}" style="color:${c.primary};">${escapeHtml(s.linkLabel||"Resource")}</a></div>` : ""}
+    </div>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Goal Plan${data.client?" - "+escapeHtml(data.client):""}</title>
+  <style>body{font-family:Arial,sans-serif;max-width:760px;margin:30px auto;color:#222;} h1{color:${c.text};} ul{margin:4px 0;}</style>
+  </head><body>
+  <script type="application/json" id="ts-data">${JSON.stringify(data).replace(/</g,'\\u003c')}<\/script>
+  <h1 style="border-bottom:3px solid ${c.primary};padding-bottom:8px;">🎯 Goal Plan</h1>
+  ${data.client ? `<p><strong>Client:</strong> ${escapeHtml(data.client)}</p>` : ""}
+  ${data.date ? `<p><strong>Date:</strong> ${escapeHtml(data.date)}</p>` : ""}
+  ${data.diagnosis ? `<p><strong>Diagnosis / Presenting Conditions:</strong> ${escapeHtml(data.diagnosis)}</p>` : ""}
+  ${data.goal ? `<p><strong>Session / Overarching Goal:</strong> ${escapeHtml(data.goal)}</p>` : ""}
+  <h2 style="color:${c.text};">Strategies</h2>
+  ${rows || "<p>No strategies selected.</p>"}
+  ${data.includeTherapist ? `<p style="margin-top:24px;font-size:13px;">Prepared by: ${escapeHtml(data.therapistName)} ${data.ahpra?`(AHPRA ${escapeHtml(data.ahpra)})`:""}</p>` : ""}
+  ${data.includeDisclaimer ? `<p style="margin-top:10px;font-size:12px;color:#666;">${escapeHtml(data.disclaimerText)}</p>` : ""}
+  </body></html>`;
+}
+
+function buildTreatmentPlanTxt(data){
+  const strategies = data.strategyIds.map(id=>state.strategies.find(s=>s.id===id)).filter(Boolean);
+  let out = `GOAL PLAN\n`;
+  if(data.client) out += `Client: ${data.client}\n`;
+  if(data.date) out += `Date: ${data.date}\n`;
+  if(data.diagnosis) out += `Diagnosis / Presenting Conditions: ${data.diagnosis}\n`;
+  if(data.goal) out += `Session Goal: ${data.goal}\n`;
+  out += `\nSTRATEGIES\n----------\n`;
+  strategies.forEach(s=>{
+    out += `\n${s.name}${s.domains&&s.domains.length ? " ["+s.domains.join(", ")+"]" : ""}\n`;
+    if(s.description) out += `${s.description}\n`;
+    if(s.link) out += `Resource: ${s.link}\n`;
+  });
+  if(data.includeTherapist) out += `\nPrepared by: ${data.therapistName} ${data.ahpra?`(AHPRA ${data.ahpra})`:""}\n`;
+  if(data.includeDisclaimer) out += `\n${data.disclaimerText}\n`;
+  return out;
+}
+
+async function exportTreatmentPlan(type){
+  const data = gatherTreatmentPlanData();
+  const fname = `goal-plan${data.client?"-"+data.client.replace(/\s+/g,"_"):""}`;
+  if(type === "txt"){
+    downloadBlob(buildTreatmentPlanTxt(data), fname+".txt", "text/plain");
+  } else if(type === "html"){
+    downloadBlob(buildTreatmentPlanHtml(data), fname+".html", "text/html");
+  } else if(type === "pdf"){
+    await exportPrintableAsPdf(buildTreatmentPlanHtml(data), fname+".pdf");
+  }
+}
+
+function reimportTreatmentPlanHtml(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    const doc = new DOMParser().parseFromString(ev.target.result, "text/html");
+    const script = doc.getElementById("ts-data");
+    if(!script){ alert("Couldn't find embedded plan data in this file. Only files exported from this app can be reimported."); return; }
+    try{
+      const data = JSON.parse(script.textContent);
+      document.getElementById("tp-client").value = data.client||"";
+      document.getElementById("tp-date").value = data.date||"";
+      document.getElementById("tp-diagnosis").value = data.diagnosis||"";
+      document.getElementById("tp-goal").value = data.goal||"";
+      document.getElementById("tp-includeTherapist").checked = !!data.includeTherapist;
+      document.getElementById("tp-therapistFields").classList.toggle("hidden", !data.includeTherapist);
+      document.getElementById("tp-therapistName").value = data.therapistName||"";
+      document.getElementById("tp-ahpra").value = data.ahpra||"";
+      document.getElementById("tp-includeDisclaimer").checked = !!data.includeDisclaimer;
+      document.getElementById("tp-disclaimerText").value = data.disclaimerText||"";
+      state.planStrategyIds = (data.strategyIds||[]).filter(id=>state.strategies.some(s=>s.id===id));
+      renderPlanList();
+      renderGoalPlanningStrategyPicker();
+      refreshAll();
+      alert("Plan reimported successfully.");
+    }catch(err){ alert("Couldn't parse the embedded plan data."); }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("tp-exportTxt").addEventListener("click", ()=>exportTreatmentPlan("txt"));
+document.getElementById("tp-exportHtml").addEventListener("click", ()=>exportTreatmentPlan("html"));
+document.getElementById("tp-exportPdf").addEventListener("click", ()=>exportTreatmentPlan("pdf"));
+document.getElementById("tp-reimport").addEventListener("change", reimportTreatmentPlanHtml);
+</script>
+<script>
+/* ============ Safety & Wellness Plan Panel ============ */
+const LIGHT_ROWS = [
+  {key:"green", label:"🟢 Green Light", sub:"baseline, regulated, my everyday self", cls:"light-green"},
+  {key:"orange", label:"🟠 Orange Light", sub:"I'm struggling, need support or intervention", cls:"light-orange"},
+  {key:"red", label:"🔴 Red Light", sub:"crisis, need emergency supports (e.g. ED, crisis line)", cls:"light-red"}
+];
+function renderWellnessTable(){
+  const tbody = document.querySelector("#wp-table tbody");
+  tbody.innerHTML = LIGHT_ROWS.map(r=>`
+    <tr>
+      <td class="light-label ${r.cls}">${r.label}<br><span style="font-weight:400;font-size:0.7rem;">${r.sub}</span></td>
+      <td><textarea id="wp-${r.key}-looks"></textarea></td>
+      <td><textarea id="wp-${r.key}-helps"></textarea></td>
+      <td><textarea id="wp-${r.key}-doesnt"></textarea></td>
+    </tr>`).join("");
+}
+renderWellnessTable();
+
+function gatherWellnessData(){
+  const data = {client:document.getElementById("wp-client").value, date:document.getElementById("wp-date").value, scheme:"skyyellow", rows:{}};
+  LIGHT_ROWS.forEach(r=>{
+    data.rows[r.key] = {
+      looks: document.getElementById(`wp-${r.key}-looks`).value,
+      helps: document.getElementById(`wp-${r.key}-helps`).value,
+      doesnt: document.getElementById(`wp-${r.key}-doesnt`).value
+    };
+  });
+  return data;
+}
+
+function buildWellnessHtml(data, includePlan, includeGoalBank){
+  const c = COLOR_SCHEMES.skyyellow;
+  const rowsHtml = LIGHT_ROWS.map(r=>{
+    const d = data.rows[r.key];
+    return `<tr>
+      <td style="background:${r.key==='green'?'#4E9A6B':r.key==='orange'?'#E08A3C':'#C24C40'};color:#fff;font-weight:700;padding:8px;border:1px solid #ddd;">${r.label}</td>
+      <td style="border:1px solid ${c.primary};padding:8px;background:${COLOR_SCHEMES.skyyellow.light};">${formatRichText(d.looks)}</td>
+      <td style="border:1px solid ${c.primary};padding:8px;background:#FCF6E0;">${formatRichText(d.helps)}</td>
+      <td style="border:1px solid ${c.primary};padding:8px;background:#FCF6E0;">${formatRichText(d.doesnt)}</td>
+    </tr>`;
+  }).join("");
+  let planSection = "";
+  if(includePlan){
+    const strategies = state.planStrategyIds.map(id=>state.strategies.find(s=>s.id===id)).filter(Boolean);
+    planSection = `<h2 style="color:${c.text};">🎯 Goal Plan Strategies</h2>` + strategies.map(s=>`
+      <div style="border:1px solid ${c.primary}33;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+        <strong>${escapeHtml(s.name)}</strong>${formatRichText(s.description)}
+      </div>`).join("");
+  }
+  let goalBankSection = "";
+  if(includeGoalBank && state.goalBank.length){
+    goalBankSection = `<h2 style="color:${c.text};">🏦 Goal Bank</h2>` + state.goalBank.map(g=>`
+      <div style="border:1px solid ${c.primary}33;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+        <strong>${escapeHtml(g.text)}</strong>
+        ${g.homePractice ? `<p style="font-size:13px;color:#555;"><em>Home practice:</em> ${escapeHtml(g.homePractice)}</p>` : ""}
+      </div>`).join("");
+  }
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Safety &amp; Wellness Plan</title>
+  <style>body{font-family:Arial,sans-serif;max-width:820px;margin:30px auto;color:#222;} table{border-collapse:collapse;width:100%;}</style>
+  </head><body>
+  <script type="application/json" id="ts-data">${JSON.stringify(data).replace(/</g,'\\u003c')}<\/script>
+  <h1 style="border-bottom:3px solid ${c.primary};padding-bottom:8px;">🚦 Safety &amp; Wellness Plan</h1>
+  ${data.client ? `<p><strong>Client:</strong> ${escapeHtml(data.client)}</p>` : ""}
+  ${data.date ? `<p><strong>Date:</strong> ${escapeHtml(data.date)}</p>` : ""}
+  <table><thead><tr><th style="border:1px solid #ddd;padding:8px;"></th><th style="border:1px solid ${c.primary};padding:8px;background:${c.light};">Looks/feels like</th><th style="border:1px solid ${c.primary};padding:8px;background:${c.light};">What helps</th><th style="border:1px solid ${c.primary};padding:8px;background:${c.light};">What doesn't help</th></tr></thead>
+  <tbody>${rowsHtml}</tbody></table>
+  ${planSection}
+  ${goalBankSection}
+  </body></html>`;
+}
+
+function buildWellnessTxt(data){
+  let out = `SAFETY & WELLNESS PLAN\n`;
+  if(data.client) out += `Client: ${data.client}\n`;
+  if(data.date) out += `Date: ${data.date}\n\n`;
+  LIGHT_ROWS.forEach(r=>{
+    const d = data.rows[r.key];
+    out += `${r.label.toUpperCase()}\nLooks/feels like: ${d.looks}\nWhat helps: ${d.helps}\nWhat doesn't help: ${d.doesnt}\n\n`;
+  });
+  return out;
+}
+
+async function exportWellnessPlan(type, includePlan, includeGoalBank){
+  const data = gatherWellnessData();
+  const fname = `wellness-plan${data.client?"-"+data.client.replace(/\s+/g,"_"):""}`;
+  if(type === "txt") downloadBlob(buildWellnessTxt(data), fname+".txt", "text/plain");
+  else if(type === "html") downloadBlob(buildWellnessHtml(data, includePlan, includeGoalBank), fname+".html", "text/html");
+  else if(type === "pdf") await exportPrintableAsPdf(buildWellnessHtml(data, includePlan, includeGoalBank), fname+".pdf");
+}
+
+function reimportWellnessPlanHtml(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    const doc = new DOMParser().parseFromString(ev.target.result, "text/html");
+    const script = doc.getElementById("ts-data");
+    if(!script){ alert("Couldn't find embedded plan data in this file. Only files exported from this app can be reimported."); return; }
+    try{
+      const data = JSON.parse(script.textContent);
+      document.getElementById("wp-client").value = data.client||"";
+      document.getElementById("wp-date").value = data.date||"";
+      LIGHT_ROWS.forEach(r=>{
+        const d = (data.rows||{})[r.key] || {};
+        document.getElementById(`wp-${r.key}-looks`).value = d.looks||"";
+        document.getElementById(`wp-${r.key}-helps`).value = d.helps||"";
+        document.getElementById(`wp-${r.key}-doesnt`).value = d.doesnt||"";
+      });
+      alert("Wellness plan reimported successfully.");
+    }catch(err){ alert("Couldn't parse the embedded plan data."); }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("wp-exportTxt").addEventListener("click", ()=>exportWellnessPlan("txt"));
+document.getElementById("wp-exportHtml").addEventListener("click", ()=>exportWellnessPlan("html"));
+document.getElementById("wp-exportPdf").addEventListener("click", ()=>exportWellnessPlan("pdf"));
+document.getElementById("wp-exportWithPlan").addEventListener("click", ()=>exportWellnessPlan("html", true, true));
+document.getElementById("wp-reimport").addEventListener("change", reimportWellnessPlanHtml);
+</script>
+<script>
+/* ============ Goal Bank Panel ============ */
+function renderGoalBankList(){
+  const box = document.getElementById("gb-list");
+  if(state.goalBank.length === 0){
+    box.innerHTML = `<div class="plan-list-empty">No goals yet. Generate one with AI above, or add one manually.</div>`;
+    return;
+  }
+  box.innerHTML = state.goalBank.map(g=>`
+    <div class="gb-item">
+      <h4>${escapeHtml(g.text)}</h4>
+      <div class="meta">${g.diagnosis?escapeHtml(g.diagnosis)+" · ":""}${g.domain?escapeHtml(g.domain):""}</div>
+      ${g.homePractice ? `<div class="practice"><strong>🏠 Home practice:</strong> ${escapeHtml(g.homePractice)}</div>` : ""}
+      <div class="gb-actions">
+        <button data-action="edit" data-id="${g.id}">Edit</button>
+        <button class="danger" data-action="delete" data-id="${g.id}">Delete</button>
+      </div>
+    </div>`).join("");
+  box.querySelectorAll("button[data-action]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = btn.dataset.id;
+      if(btn.dataset.action === "delete"){
+        if(confirm("Delete this goal?")){
+          state.goalBank = state.goalBank.filter(g=>g.id!==id);
+          saveGoalBank(); renderGoalBankList();
+        }
+      } else if(btn.dataset.action === "edit"){
+        openEditGoalBankModal(id);
+      }
+    });
+  });
+}
+
+function openEditGoalBankModal(id){
+  const g = state.goalBank.find(x=>x.id===id);
+  if(!g) return;
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><h2>Edit Goal</h2><button class="modal-close" data-close>×</button></div>
+      <div class="field"><label>Goal Text</label><textarea id="gbe-text">${escapeHtml(g.text)}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Diagnosis</label><input type="text" id="gbe-diagnosis" value="${escapeHtml(g.diagnosis||"")}"></div>
+        <div class="field"><label>Domain</label><input type="text" id="gbe-domain" value="${escapeHtml(g.domain||"")}"></div>
+      </div>
+      <div class="field"><label>Home Practice Opportunities</label><textarea id="gbe-practice">${escapeHtml(g.homePractice||"")}</textarea></div>
+      <div class="modal-actions"><button class="btn ghost" data-close>Cancel</button><button class="btn primary" id="gbe-save">Save</button></div>
+    </div>
+  `);
+  wireModalCloseButtons();
+  document.getElementById("gbe-save").addEventListener("click", ()=>{
+    g.text = document.getElementById("gbe-text").value;
+    g.diagnosis = document.getElementById("gbe-diagnosis").value;
+    g.domain = document.getElementById("gbe-domain").value;
+    g.homePractice = document.getElementById("gbe-practice").value;
+    saveGoalBank(); closeModal(); renderGoalBankList();
+  });
+}
+
+document.getElementById("gb-addManual").addEventListener("click", ()=>{
+  state.goalBank.push({id:uid(), text:"New goal — click Edit to fill in", diagnosis:"", domain:"", homePractice:""});
+  saveGoalBank(); renderGoalBankList();
+});
+
+document.getElementById("gb-ai-generate").addEventListener("click", async ()=>{
+  const diagnosis = document.getElementById("gb-ai-diagnosis").value.trim();
+  const domain = document.getElementById("gb-ai-domain").value.trim();
+  const context = document.getElementById("gb-ai-context").value.trim();
+  const statusEl = document.getElementById("gb-ai-status");
+  if(!diagnosis && !domain){ statusEl.textContent = "Add at least a diagnosis or domain to generate a goal."; return; }
+  statusEl.textContent = "Generating…";
+  const prompt = `You are an experienced occupational therapist writing an NDIS-style treatment goal. Write ONE SMART goal (specific, measurable, achievable, relevant, time-bound) for a client with the following:
+Diagnosis/presenting condition: ${diagnosis || "not specified"}
+Domain/focus area: ${domain || "not specified"}
+Additional context: ${context || "none provided"}
+
+Respond in this exact format with no extra commentary:
+GOAL: [the goal in one or two sentences]
+HOME PRACTICE: [2-3 concrete home practice activities the client/family could do between sessions to support this goal]`;
+  try{
+    const text = await callClaude(prompt);
+    const goalMatch = text.match(/GOAL:\s*([\s\S]*?)(?:\n *HOME PRACTICE:|$)/i);
+    const practiceMatch = text.match(/HOME PRACTICE:\s*([\s\S]*)/i);
+    const goalText = goalMatch ? goalMatch[1].trim() : text.trim();
+    const practiceText = practiceMatch ? practiceMatch[1].trim() : "";
+    state.goalBank.push({id:uid(), text: goalText, diagnosis, domain, homePractice: practiceText});
+    saveGoalBank(); renderGoalBankList();
+    statusEl.textContent = "Goal generated and added to the bank below.";
+  }catch(err){
+    statusEl.textContent = "Couldn't generate a goal: " + err.message;
+  }
+});
+
+function buildGoalBankHtml(includePlan){
+  const c = COLOR_SCHEMES.pinksage;
+  const goalsHtml = state.goalBank.map(g=>`
+    <div style="border:1px solid ${c.primary}33;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+      <h3 style="margin:0 0 4px;color:${c.text};font-size:16px;">${escapeHtml(g.text)}</h3>
+      <div style="font-size:12px;color:#777;">${g.diagnosis?escapeHtml(g.diagnosis)+" · ":""}${g.domain?escapeHtml(g.domain):""}</div>
+      ${g.homePractice ? `<p style="background:${COLOR_SCHEMES.pinksage.light};border-radius:8px;padding:8px 10px;font-size:13px;margin-top:8px;"><strong>Home practice:</strong> ${escapeHtml(g.homePractice)}</p>` : ""}
+    </div>`).join("");
+  let planSection = "";
+  if(includePlan){
+    const strategies = state.planStrategyIds.map(id=>state.strategies.find(s=>s.id===id)).filter(Boolean);
+    planSection = `<h2 style="color:${c.text};">🎯 Goal Plan Strategies</h2>` + strategies.map(s=>`
+      <div style="border:1px solid ${c.primary}33;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+        <strong>${escapeHtml(s.name)}</strong>${formatRichText(s.description)}
+      </div>`).join("");
+  }
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Goal Bank</title>
+  <style>body{font-family:Arial,sans-serif;max-width:780px;margin:30px auto;color:#222;}</style>
+  </head><body>
+  <h1 style="border-bottom:3px solid ${c.primary};padding-bottom:8px;color:${c.text};">🏦 Goal Bank</h1>
+  ${goalsHtml || "<p>No goals saved yet.</p>"}
+  ${planSection}
+  </body></html>`;
+}
+function buildGoalBankTxt(){
+  let out = "GOAL BANK\n---------\n";
+  state.goalBank.forEach(g=>{
+    out += `\n${g.text}\n`;
+    if(g.diagnosis || g.domain) out += `[${g.diagnosis}${g.diagnosis&&g.domain?" · ":""}${g.domain}]\n`;
+    if(g.homePractice) out += `Home practice: ${g.homePractice}\n`;
+  });
+  return out;
+}
+async function exportGoalBank(type, includePlan){
+  const fname = "goal-bank";
+  if(type === "txt") downloadBlob(buildGoalBankTxt(), fname+".txt", "text/plain");
+  else if(type === "html") downloadBlob(buildGoalBankHtml(includePlan), fname+".html", "text/html");
+  else if(type === "pdf") await exportPrintableAsPdf(buildGoalBankHtml(includePlan), fname+".pdf");
+}
+document.getElementById("gb-exportTxt").addEventListener("click", ()=>exportGoalBank("txt"));
+document.getElementById("gb-exportHtml").addEventListener("click", ()=>exportGoalBank("html"));
+document.getElementById("gb-exportPdf").addEventListener("click", ()=>exportGoalBank("pdf"));
+document.getElementById("gb-exportWithPlan").addEventListener("click", ()=>exportGoalBank("html", true));
+
+renderGoalBankList();
+</script>
+<script>
+/* ============ Sensory Diet Panel ============ */
+let sensorySlots = [
+  {id:uid(), time:"Morning", activity:""},
+  {id:uid(), time:"Midday", activity:""},
+  {id:uid(), time:"Afternoon", activity:""}
+];
+function renderSensorySlots(){
+  const box = document.getElementById("sd-slots");
+  box.innerHTML = sensorySlots.map(s=>`
+    <div class="slot-card">
+      <div class="slot-head">
+        <input type="text" data-id="${s.id}" class="slot-time" value="${escapeHtml(s.time)}">
+        <button type="button" data-id="${s.id}" class="slot-remove">✕</button>
+      </div>
+      <textarea data-id="${s.id}" class="slot-activity" placeholder="Sensory activities for this time…">${escapeHtml(s.activity)}</textarea>
+    </div>`).join("");
+  box.querySelectorAll(".slot-time").forEach(inp=>inp.addEventListener("input", ()=>{
+    const slot = sensorySlots.find(x=>x.id===inp.dataset.id); if(slot) slot.time = inp.value;
+  }));
+  box.querySelectorAll(".slot-activity").forEach(ta=>ta.addEventListener("input", ()=>{
+    const slot = sensorySlots.find(x=>x.id===ta.dataset.id); if(slot) slot.activity = ta.value;
+  }));
+  box.querySelectorAll(".slot-remove").forEach(btn=>btn.addEventListener("click", ()=>{
+    sensorySlots = sensorySlots.filter(x=>x.id!==btn.dataset.id);
+    renderSensorySlots();
+  }));
+}
+document.getElementById("sd-addSlot").addEventListener("click", ()=>{
+  sensorySlots.push({id:uid(), time:"New Slot", activity:""});
+  renderSensorySlots();
+});
+function buildSensoryDietHtml(data){
+  const c = COLOR_SCHEMES.teal;
+  const slotsHtml = data.slots.map(s=>`
+    <div style="border:1px solid ${c.primary}33;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+      <h3 style="margin:0 0 6px;color:${c.text};">${escapeHtml(s.time)}</h3>
+      ${formatRichText(s.activity)}
+    </div>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Sensory Diet</title>
+  <style>body{font-family:Arial,sans-serif;max-width:760px;margin:30px auto;color:#222;}</style>
+  </head><body>
+  <h1 style="border-bottom:3px solid ${c.primary};padding-bottom:8px;">🌀 Sensory Diet</h1>
+  ${data.client ? `<p><strong>Client:</strong> ${escapeHtml(data.client)}</p>` : ""}
+  ${data.date ? `<p><strong>Date:</strong> ${escapeHtml(data.date)}</p>` : ""}
+  ${data.overview ? `<p><em>${escapeHtml(data.overview)}</em></p>` : ""}
+  ${slotsHtml}
+  </body></html>`;
+}
+async function exportSensoryDiet(type){
+  const data = {
+    client: document.getElementById("sd-client").value,
+    date: document.getElementById("sd-date").value,
+    overview: document.getElementById("sd-overview").value,
+    slots: sensorySlots
+  };
+  const fname = `sensory-diet${data.client?"-"+data.client.replace(/\s+/g,"_"):""}`;
+  const html = buildSensoryDietHtml(data);
+  if(type === "html") downloadBlob(html, fname+".html", "text/html");
+  else if(type === "pdf") await exportPrintableAsPdf(html, fname+".pdf");
+}
+document.getElementById("sd-exportHtml").addEventListener("click", ()=>exportSensoryDiet("html"));
+document.getElementById("sd-exportPdf").addEventListener("click", ()=>exportSensoryDiet("pdf"));
+renderSensorySlots();
+</script>
+<script>
+/* ============ Evidence Base Panel ============ */
+let evSelectedId = null;
+
+function renderEvidenceTable(){
+  const tbody = document.getElementById("ev-tbody");
+  if(state.evidence.length === 0){
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);padding:20px;">No articles added yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = state.evidence.map(a=>`
+    <tr data-id="${a.id}" class="${a.id===evSelectedId?'selected':''}">
+      <td>${escapeHtml(a.title)}</td>
+      <td>${escapeHtml(a.authors)}</td>
+      <td>${escapeHtml(a.journal)}</td>
+      <td><button class="danger" data-action="delete" data-id="${a.id}" style="background:none;border:none;color:#B5493A;">✕</button></td>
+    </tr>`).join("");
+  tbody.querySelectorAll("tr[data-id]").forEach(tr=>{
+    tr.addEventListener("click", e=>{
+      if(e.target.closest("button")) return;
+      evSelectedId = tr.dataset.id;
+      renderEvidenceTable();
+      renderEvidenceDetail();
+    });
+  });
+  tbody.querySelectorAll("button[data-action='delete']").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      e.stopPropagation();
+      if(confirm("Delete this article?")){
+        state.evidence = state.evidence.filter(a=>a.id!==btn.dataset.id);
+        if(evSelectedId===btn.dataset.id) evSelectedId = null;
+        saveEvidence(); renderEvidenceTable(); renderEvidenceDetail();
+      }
+    });
+  });
+}
+
+function renderEvidenceDetail(){
+  const box = document.getElementById("ev-detail");
+  const a = state.evidence.find(x=>x.id===evSelectedId);
+  if(!a){
+    box.innerHTML = `<div class="ev-empty">Select an article from the table to view details and generate an AI summary.</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <h4>${escapeHtml(a.title)}</h4>
+    <div class="meta">${escapeHtml(a.authors)}${a.journal?" · "+escapeHtml(a.journal):""}</div>
+    ${a.link ? `<p style="font-size:0.82rem;"><a href="${escapeHtml(a.link)}" target="_blank" rel="noopener">${escapeHtml(a.link)}</a></p>` : ""}
+    <button class="btn primary" id="ev-summarize" type="button">✨ Generate AI Summary</button>
+    <div class="ai-status" id="ev-ai-status"></div>
+    <div class="ev-summary-box" id="ev-summary-box">${a.summary ? escapeHtml(a.summary) : '<span style="color:var(--ink-soft);">No summary generated yet.</span>'}</div>
+  `;
+  document.getElementById("ev-summarize").addEventListener("click", async ()=>{
+    const statusEl = document.getElementById("ev-ai-status");
+    if(!a.abstract || !a.abstract.trim()){
+      statusEl.textContent = "Add an abstract or notes for this article first (edit not yet supported — delete and re-add with notes).";
+      return;
+    }
+    statusEl.textContent = "Summarising…";
+    const prompt = `Summarise the following research article for a busy occupational therapist preparing a clinical or NDIS report. Give 3-4 concise bullet points covering: the key finding(s), the population/method if stated, and clinical relevance. Do not fabricate details beyond what's provided, and do not include citations.
+
+Title: ${a.title}
+Authors: ${a.authors}
+Source: ${a.journal}
+Abstract/notes: ${a.abstract}`;
+    try{
+      const summary = await callClaude(prompt);
+      a.summary = summary;
+      saveEvidence();
+      document.getElementById("ev-summary-box").textContent = summary;
+      statusEl.textContent = "Summary generated.";
+    }catch(err){
+      statusEl.textContent = "Couldn't generate summary: " + err.message;
+    }
+  });
+}
+
+document.getElementById("ev-add").addEventListener("click", ()=>{
+  const title = document.getElementById("ev-title").value.trim();
+  if(!title){ alert("Title is required."); return; }
+  const article = {
+    id: uid(),
+    title,
+    authors: document.getElementById("ev-authors").value.trim(),
+    journal: document.getElementById("ev-journal").value.trim(),
+    link: document.getElementById("ev-link").value.trim(),
+    abstract: document.getElementById("ev-abstract").value.trim(),
+    summary: ""
+  };
+  state.evidence.push(article);
+  saveEvidence();
+  ["ev-title","ev-authors","ev-journal","ev-link","ev-abstract"].forEach(id=>document.getElementById(id).value = "");
+  evSelectedId = article.id;
+  renderEvidenceTable();
+  renderEvidenceDetail();
+});
+
+renderEvidenceTable();
+renderEvidenceDetail();
+</script>
+<script>
+/* ============ Cloud Sync (JSONBin) Modal ============ */
+function updateSyncStatusUI(){
+  const el = document.getElementById("syncStatus");
+  const txt = document.getElementById("syncStatusText");
+  if(state.cloud.secret && state.cloud.binId){
+    el.classList.add("connected");
+    txt.textContent = "Cloud sync connected";
+  } else {
+    el.classList.remove("connected");
+    txt.textContent = "Cloud sync not connected";
+  }
+}
+function openCloudSyncModal(){
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><h2>☁️ Cloud Sync (JSONBin)</h2><button class="modal-close" data-close>×</button></div>
+      <div class="field"><label>🔑 Connection Details</label></div>
+      <p class="helper-text">Enter your JSONBin credentials below. These are saved only in <em>this browser</em> (localStorage) and never sent anywhere except JSONBin's servers.</p>
+      <div class="field"><label>Secret Key (from jsonbin.io → API Keys)</label><input type="text" id="cs-secret" value="${escapeHtml(state.cloud.secret||"")}"></div>
+      <div class="field"><label>Bin ID (from your bin's URL or details panel)</label><input type="text" id="cs-binId" value="${escapeHtml(state.cloud.binId||"")}"></div>
+      <div class="modal-actions">
+        <button class="btn primary" id="cs-connect" type="button">Save &amp; Connect</button>
+        <button class="btn ghost" id="cs-disconnect" type="button">Disconnect</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="cs-manualSync" type="button">🔄 Manual Sync</button>
+        <button class="btn" id="cs-loadCloud" type="button">⬇️ Load from Cloud</button>
+        <button class="btn" id="cs-saveCloud" type="button">⬆️ Save to Cloud</button>
+      </div>
+      <p class="helper-text" id="cs-message"></p>
+      <p class="helper-text">💡 <strong>How it works:</strong> Once connected, click "Save to Cloud" to push your current strategies, or "Manual Sync" any time you want to push local changes. On a new device, enter your credentials and click "Load from Cloud" — your data appears instantly.</p>
+      <div class="modal-actions"><button class="btn ghost" data-close>Close</button></div>
+    </div>
+  `);
+  wireModalCloseButtons();
+  document.getElementById("cs-connect").addEventListener("click", ()=>{
+    state.cloud.secret = document.getElementById("cs-secret").value.trim();
+    state.cloud.binId = document.getElementById("cs-binId").value.trim();
+    saveCloud();
+    updateSyncStatusUI();
+    setCsMessage("Saved. You can now sync with the cloud.");
+  });
+  document.getElementById("cs-disconnect").addEventListener("click", ()=>{
+    state.cloud = {secret:"", binId:""};
+    saveCloud();
+    updateSyncStatusUI();
+    document.getElementById("cs-secret").value = "";
+    document.getElementById("cs-binId").value = "";
+    setCsMessage("Disconnected.");
+  });
+  document.getElementById("cs-loadCloud").addEventListener("click", loadFromCloud);
+  document.getElementById("cs-saveCloud").addEventListener("click", saveToCloud);
+  document.getElementById("cs-manualSync").addEventListener("click", saveToCloud);
+}
+function setCsMessage(msg){ const el = document.getElementById("cs-message"); if(el) el.textContent = msg; }
+
+async function saveToCloud(){
+  if(!state.cloud.secret || !state.cloud.binId){ setCsMessage("Connect your JSONBin credentials first."); return; }
+  setCsMessage("Saving…");
+  try{
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${state.cloud.binId}`, {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json", "X-Master-Key": state.cloud.secret },
+      body: JSON.stringify({ strategies: state.strategies, categories: state.categories, goalBank: state.goalBank, evidence: state.evidence })
+    });
+    if(!res.ok) throw new Error("Request failed ("+res.status+")");
+    setCsMessage("Saved to cloud successfully.");
+  }catch(err){ setCsMessage("Couldn't save to cloud: "+err.message); }
+}
+async function loadFromCloud(){
+  if(!state.cloud.secret || !state.cloud.binId){ setCsMessage("Connect your JSONBin credentials first."); return; }
+  setCsMessage("Loading…");
+  try{
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${state.cloud.binId}/latest`, {
+      headers:{ "X-Master-Key": state.cloud.secret }
+    });
+    if(!res.ok) throw new Error("Request failed ("+res.status+")");
+    const json = await res.json();
+    const record = json.record || {};
+    state.strategies = record.strategies || [];
+    state.categories = record.categories && record.categories.length ? record.categories : [...DEFAULT_CATEGORIES];
+    state.goalBank = record.goalBank || [];
+    state.evidence = record.evidence || [];
+    saveStrategies(); saveCategories(); saveGoalBank(); saveEvidence();
+    refreshAll();
+    renderGoalBankList();
+    renderEvidenceTable();
+    setCsMessage("Loaded from cloud successfully.");
+  }catch(err){ setCsMessage("Couldn't load from cloud: "+err.message); }
+}
+document.getElementById("btnCloudSync").addEventListener("click", openCloudSyncModal);
+
+/* ============ Backup & Restore Modal ============ */
+function openBackupModal(){
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><h2>💾 Backup &amp; Restore</h2><button class="modal-close" data-close>×</button></div>
+      <div class="field"><label>📤 Export All Data</label></div>
+      <p class="helper-text">Download all your strategies, categories, goal bank, and evidence entries as a <code>.json</code> backup file. Keep it somewhere safe — Google Drive, USB, or email it to yourself.</p>
+      <button class="btn primary" id="bk-download" type="button">⬇️ Download Backup (.json)</button>
+      <div class="field" style="margin-top:20px;"><label>📥 Import / Restore Data</label></div>
+      <p class="helper-text">Load a previously exported <code>.json</code> backup file. <strong>This will merge imported strategies with your current ones</strong> — duplicates (same ID) will be skipped.</p>
+      <label class="btn" style="display:inline-block;">⬆️ Choose Backup File<input type="file" id="bk-upload" accept=".json" style="display:none;"></label>
+      <p class="helper-text" id="bk-message"></p>
+      <p class="helper-text">💡 <strong>Tip:</strong> When moving to a new computer, export a backup here, open the app on the new computer, then import the file. Your strategies will be ready instantly.</p>
+      <div class="modal-actions"><button class="btn ghost" data-close>Close</button></div>
+    </div>
+  `);
+  wireModalCloseButtons();
+  document.getElementById("bk-download").addEventListener("click", ()=>{
+    const payload = {strategies: state.strategies, categories: state.categories, goalBank: state.goalBank, evidence: state.evidence, exportedAt: new Date().toISOString()};
+    downloadBlob(JSON.stringify(payload,null,2), `strategies-backup-${new Date().toISOString().slice(0,10)}.json`, "application/json");
+  });
+  document.getElementById("bk-upload").addEventListener("change", e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        const incoming = data.strategies || [];
+        const existingIds = new Set(state.strategies.map(s=>s.id));
+        let added = 0;
+        incoming.forEach(s=>{ if(!existingIds.has(s.id)){ state.strategies.push(s); added++; } });
+        (data.categories||[]).forEach(d=>{ if(!state.categories.includes(d)) state.categories.push(d); });
+        (data.goalBank||[]).forEach(g=>{ if(!state.goalBank.some(x=>x.id===g.id)) state.goalBank.push(g); });
+        (data.evidence||[]).forEach(a=>{ if(!state.evidence.some(x=>x.id===a.id)) state.evidence.push(a); });
+        saveStrategies(); saveCategories(); saveGoalBank(); saveEvidence();
+        refreshAll(); renderGoalBankList(); renderEvidenceTable();
+        document.getElementById("bk-message").textContent = `Imported ${added} new strategies (${incoming.length-added} duplicates skipped).`;
+      }catch(err){ document.getElementById("bk-message").textContent = "Couldn't read that file — is it a valid backup .json?"; }
+    };
+    reader.readAsText(file);
+  });
+}
+document.getElementById("btnBackup").addEventListener("click", openBackupModal);
+
+/* ============ Bulk Import Modal ============ */
+let importPreviewRows = [];
+function openBulkImportModal(){
+  importPreviewRows = [];
+  openModal(`
+    <div class="modal wide">
+      <div class="modal-head"><h2>📥 Bulk Import Strategies</h2><button class="modal-close" data-close>×</button></div>
+      <div class="field"><label>Step 1 — Download Template</label></div>
+      <p class="helper-text">Download the CSV template, fill it in with your strategies in Excel or Google Sheets, then upload it below.<br>Columns: <code>name, description, domains, link, linkLabel, notes, acronym</code></p>
+      <p class="helper-text">💡 <strong>domains</strong> — separate multiple with a pipe character: <code>Coping skills|Leisure</code><br>
+      💡 <strong>description / notes</strong> — use <code>**bold**</code> and start lines with <code>- </code> for bullets<br>
+      💡 <strong>acronym</strong> — wrap bold letters in single asterisks: <code>*A*BC *P*LEASE</code></p>
+      <button class="btn" id="bi-template" type="button">⬇️ Download CSV Template</button>
+      <div class="field" style="margin-top:20px;"><label>Step 2 — Upload Your CSV</label></div>
+      <label class="btn" style="display:inline-block;">📂 Choose CSV File<input type="file" id="bi-upload" accept=".csv" style="display:none;"></label>
+      <div class="field" style="margin-top:16px;"><label>Step 3 — Preview &amp; Confirm</label></div>
+      <div class="import-preview" id="bi-preview"><div class="plan-list-empty">No file uploaded yet.</div></div>
+      <div class="checkbox-row"><input type="checkbox" id="bi-skipDup" checked> Skip duplicates (same name)</div>
+      <div class="modal-actions">
+        <button class="btn ghost" data-close>Cancel</button>
+        <button class="btn primary" id="bi-importAll" type="button">✓ Import All</button>
+      </div>
+    </div>
+  `);
+  wireModalCloseButtons();
+  document.getElementById("bi-template").addEventListener("click", ()=>{
+    const csv = "name,description,domains,link,linkLabel,notes,acronym\n" +
+      `"Example Strategy","A short description. Use **bold** and\n- bullet points","Coping skills|Leisure","https://example.com","Watch video","Clinician notes here","*E*xample"\n`;
+    downloadBlob(csv, "strategy-import-template.csv", "text/csv");
+  });
+  document.getElementById("bi-upload").addEventListener("change", e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    Papa.parse(file, {
+      header:true, skipEmptyLines:true,
+      complete: results=>{
+        importPreviewRows = results.data.map(row=>({
+          name: (row.name||"").trim(),
+          description: row.description||"",
+          domains: (row.domains||"").split("|").map(d=>d.trim()).filter(Boolean),
+          link: row.link||"",
+          linkLabel: row.linkLabel||"",
+          notes: row.notes||"",
+          acronym: row.acronym||""
+        })).filter(r=>r.name);
+        renderImportPreview();
+      }
+    });
+  });
+  document.getElementById("bi-importAll").addEventListener("click", ()=>{
+    const skipDup = document.getElementById("bi-skipDup").checked;
+    const existingNames = new Set(state.strategies.map(s=>s.name.toLowerCase()));
+    let imported = 0;
+    importPreviewRows.forEach(r=>{
+      if(skipDup && existingNames.has(r.name.toLowerCase())) return;
+      state.strategies.push({id: uid(), ...r, subcategories:[]});
+      r.domains.forEach(d=>{ if(!state.categories.includes(d)) state.categories.push(d); });
+      existingNames.add(r.name.toLowerCase());
+      imported++;
+    });
+    saveStrategies(); saveCategories();
+    refreshAll();
+    closeModal();
+    alert(`Imported ${imported} strategies.`);
+  });
+}
+function renderImportPreview(){
+  const box = document.getElementById("bi-preview");
+  if(importPreviewRows.length === 0){ box.innerHTML = `<div class="plan-list-empty">No valid rows found in that file.</div>`; return; }
+  const existingNames = new Set(state.strategies.map(s=>s.name.toLowerCase()));
+  box.innerHTML = importPreviewRows.map(r=>{
+    const isDup = existingNames.has(r.name.toLowerCase());
+    return `<div class="row"><span>${escapeHtml(r.name)}</span>${isDup?'<span class="dup">duplicate</span>':`<span>${(r.domains||[]).map(escapeHtml).join(", ")}</span>`}</div>`;
+  }).join("");
+}
+document.getElementById("btnBulkImport").addEventListener("click", openBulkImportModal);
+</script>
+<script>
+document.getElementById('dateStamp').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+
+function dvCalculate(){
+  const domains = document.querySelectorAll('#panel-driving .dv-domain');
+  let totalScore = 0, maxScore = 0, answered = 0;
+  let dsdaVal = null, awareVal = null;
+  const flagRows = [];
+
+  domains.forEach(dom => {
+    const weight = parseFloat(dom.dataset.weight);
+    const name = dom.dataset.domain;
+    const checked = dom.querySelector('input:checked');
+    maxScore += 2 * weight;
+    if(checked){
+      answered++;
+      const val = parseInt(checked.value);
+      totalScore += val * weight;
+      if(name === "DriveSafe / DriveAware") dsdaVal = val;
+      if(name === "Self-awareness / insight") awareVal = val;
+      const lvlText = val === 0 ? "clear" : val === 1 ? "borderline" : "flagged";
+      const lvlColor = val === 0 ? "var(--green)" : val === 1 ? "var(--amber)" : "var(--red)";
+      flagRows.push(`<div class="flag-item"><span class="dom">${name}</span><span class="lvl" style="color:${lvlColor}">${lvlText}</span></div>`);
+    } else {
+      flagRows.push(`<div class="flag-item"><span class="dom">${name}</span><span class="lvl" style="color:var(--dv-ink-soft)">not scored</span></div>`);
+    }
+  });
+
+  if(answered === 0){
+    alert("Score at least one domain before calculating.");
+    return;
+  }
+
+  const pct = totalScore / maxScore; // 0 to 1
+  let band, title, desc, color, needleDeg;
+
+  if(dsdaVal === 2){
+    band = "high"; 
+  } else if(dsdaVal === 0 && awareVal === 0 && pct <= 0.30){
+    band = "low";
+  } else if(pct <= 0.35){
+    band = "low";
+  } else if(pct <= 0.65){
+    band = "medium";
+  } else {
+    band = "high";
+  }
+
+  if(band === "low"){
+    title = "Low risk";
+    desc = "Off-road indicators are largely intact. Predictive-validity data suggest this profile is consistent with a likely pass on an on-road assessment. On-road testing is still the appropriate final step where required by policy — this screen supports triage, not licensing decisions.";
+    color = "green"; needleDeg = 30;
+  } else if(band === "medium"){
+    title = "Medium risk";
+    desc = "Mixed or borderline performance across domains. No single off-road tool reliably classifies this profile — on-road assessment is strongly indicated. Consider whether rehabilitation, vehicle modification, or a restricted licence could address the flagged domains before re-screening.";
+    color = "amber"; needleDeg = 90;
+  } else {
+    title = "High risk";
+    desc = "Multiple domains flagged, and/or a classification with high published specificity for unsafe driving (DriveSafe/DriveAware 'unsafe', or absent insight). On-road assessment is essential before any decision, and interim discussion of driving cessation or restriction with the client and referring physician should be considered.";
+    color = "red"; needleDeg = 150;
+  }
+
+  document.getElementById('bandLabel').textContent = `Composite score ${totalScore.toFixed(1)} / ${maxScore.toFixed(1)} · ${answered}/${domains.length} domains scored`;
+  document.getElementById('bandLabel').style.color = `var(--dv-${color})`;
+  document.getElementById('bandTitle').textContent = title;
+  document.getElementById('bandTitle').style.color = `var(--dv-${color})`;
+  document.getElementById('bandDesc').textContent = desc;
+  document.getElementById('flags').innerHTML = '<h4>Domain-by-domain breakdown</h4>' + flagRows.join('');
+
+  dvDrawGauge(needleDeg, color);
+
+  const resultEl = document.getElementById('result');
+  resultEl.classList.add('show');
+  resultEl.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function dvDrawGauge(needleDeg, color){
+  const svg = document.getElementById('gauge');
+  const colors = {green:'#3F7D5C', amber:'#B4791F', red:'#A93A34'};
+  const cx = 90, cy = 95, r = 75;
+  function arcPath(startDeg, endDeg){
+    const toRad = d => (Math.PI/180) * (180 - d);
+    const x1 = cx + r * Math.cos(toRad(startDeg));
+    const y1 = cy - r * Math.sin(toRad(startDeg));
+    const x2 = cx + r * Math.cos(toRad(endDeg));
+    const y2 = cy - r * Math.sin(toRad(endDeg));
+    return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
+  }
+  const needleRad = (Math.PI/180) * (180 - needleDeg);
+  const nx = cx + (r-14) * Math.cos(needleRad);
+  const ny = cy - (r-14) * Math.sin(needleRad);
+
+  svg.innerHTML = `
+    <path d="${arcPath(0,60)}" stroke="#3F7D5C" stroke-width="14" fill="none" stroke-linecap="butt"/>
+    <path d="${arcPath(60,120)}" stroke="#B4791F" stroke-width="14" fill="none" stroke-linecap="butt"/>
+    <path d="${arcPath(120,180)}" stroke="#A93A34" stroke-width="14" fill="none" stroke-linecap="butt"/>
+    <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="#1B2A33" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="6" fill="#1B2A33"/>
+  `;
+}
+
+function dvCopyText(id){
+  const ta = document.getElementById(id);
+  if(!ta) return;
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(()=>{
+    const btn = ta.nextElementSibling;
+    if(btn){ const orig = btn.textContent; btn.textContent = "Copied ✓"; setTimeout(()=>btn.textContent = orig, 1500); }
+  }).catch(()=>{ document.execCommand('copy'); });
+}
+</script>
+<script>
+/* ============ Init ============ */
+loadState();
+if(!state.categories || state.categories.length === 0) state.categories = [...DEFAULT_CATEGORIES];
+refreshAll();
+renderGoalBankList();
+renderEvidenceTable();
+updateSyncStatusUI();
+switchPanel("strategies");
+</script>
+</body>
+</html>
